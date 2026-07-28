@@ -1,0 +1,27 @@
+[project]
+name = "experiment-runner-v2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dataclasses>=0.8",
+    "dotenv>=0.9.9",
+    "logging>=0.4.9.6",
+    "matplotlib>=3.11.0",
+    "numpy>=2.5.0",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.3",
+    "pathlib>=1.0.1",
+    "pyqt6>=6.11.0",
+    "pyqtgraph>=0.14.0",
+    "pyserial>=3.5",
+    "readchar>=4.2.2",
+    "regex>=2026.7.10",
+    "requests>=2.34.2",
+    "rich>=15.0.0",
+    "scipy>=1.18.0",
+    "statsmodels>=0.14.6",
+    "typing>=3.10.0.0",
+    "windsuite-sdk>=0.5.0",
+]

@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.pyc
+.vscode/
+.idea/
+analysis_code_archive/
+
+WINDDATA/*
+!WINDDATA/.gitkeep
+
+WINDANALYSIS/*
+!WINDANALYSIS/.gitkeep
