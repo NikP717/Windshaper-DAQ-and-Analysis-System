@@ -7,13 +7,14 @@ class DataColumns:
         "static_pressure",
         "temperature_celsius",
         "atmospheric_pressure_hPa",
-        "avg_pwm",
-        "avg_rpm",
-        "avg_target_pwm",
-        "pwm_std",
-        "rpm_std",
-        "pwm_array",
-        "rpm_array",
+        "avg_up_pwm",
+        "avg_up_rpm",
+        "std_up_rpm",
+        "avg_down_pwm",
+        "avg_down_rpm",
+        "std_down_rpm",
+        "rpm_up_array",
+        "rpm_down_array"
     ]
 
     META_COLUMNS = [ # u wouldnt benefit from changing this because the manual metadata exists already
@@ -37,7 +38,5 @@ class DataColumns:
         "rolling_mean_variation",
         "rolling_std_variation",
         "ADF_pvalue",
-        "integral_time_scale_s",
-        "integral_length_scale_m",
     ]
 

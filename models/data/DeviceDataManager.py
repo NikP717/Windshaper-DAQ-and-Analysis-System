@@ -1,8 +1,8 @@
 import threading
 import time
-from models.WindDataset import WindDataset
-from models.ExperimentSeriesDataSet import ExperimentSeriesDataSet
-from models.ExperimentConfig import ExperimentConfig
+from models.data.WindDataset import WindDataset
+from models.data.ExperimentSeriesDataSet import ExperimentSeriesDataSet
+from models.experiment.ExperimentConfig import ExperimentConfig
 
 class DeviceDataManager():
     def __init__(self,registered_devices_list: list, config: ExperimentConfig):

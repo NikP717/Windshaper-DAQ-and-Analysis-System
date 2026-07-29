@@ -1,9 +1,11 @@
-from models.NewProbe import NewProbe
-from models.OldProbe import OldProbe
-from models.WindController import WindController
-from models.DeviceDataManager import DeviceDataManager
-from models.ExperimentConfig import ExperimentConfig
+from models.devices.NewProbe import NewProbe
+from models.devices.OldProbe import OldProbe
+from models.wind.WindController import WindController
+from models.data.DeviceDataManager import DeviceDataManager
+from models.experiment.ExperimentConfig import ExperimentConfig
 from models.LivePlotter import LivePlotter
+from models.experiment.ExperimentClock import ExperimentClock
+from models.wind.WindState import ArrayState
 import models
 
 import time
@@ -13,16 +15,17 @@ import threading
 class DeviceManager():
     def __init__(self, config: ExperimentConfig):
         # measurement device dict {ID: DeviceType, etc.}
+        self.clock = ExperimentClock()
+
         self.config = config
         self.device_dict = config.measurement_device_dict
-        self.windcontroller = WindController(config.wall)
+        self.windcontroller = WindController(config.wall, self.clock)
         self._check_device_dict()
 
         self.registered_devices = []
         self.data_manager = None
         self._generate_device_instances()
 
-        self.start_time = 0
         self.windcontrol_thread = None
         self.writer_thread = None
 
@@ -36,8 +39,9 @@ class DeviceManager():
                 pass # no connection checker
 
     def start_devices(self):
+        self.clock.start_clock()
         # Windshaper initialisation (Background process)
-        self.windcontrol_thread = threading.Thread(target=self.config.profile,args=tuple([self.windcontroller,*self.config.profile_arguments]))
+        self.windcontrol_thread = threading.Thread(target=self.windcontroller.run_profile,args=(self.config.profile,))
         self.windcontrol_thread.daemon = True
         # Data Writer initialisation (Background process)
         self.writer_thread = threading.Thread(target=self.data_manager.update_dataset_thread)
@@ -47,9 +51,8 @@ class DeviceManager():
         self.windcontrol_thread.start()
 
         # Measurement Device Start (Main Thread Process)
-        self.start_time = time.perf_counter()
         for devices in self.registered_devices:
-            devices.start(self.start_time)
+            devices.start()
         self.data_manager.set_metadata()
 
         # Writer Start
@@ -85,24 +88,24 @@ class DeviceManager():
             self.stop_devices()
 
     def stop_devices(self):
-        self.windcontroller.stop_windshaper() # stops fans in event of emergency stop trigger
+        self.windcontroller.stop_control() # stops fans in event of emergency stop trigger
         for devices in self.registered_devices:
             devices.stop()
         self.writer_thread.join(timeout=1)
         self.windcontrol_thread.join(timeout=1)
-        self.windcontroller.turnoff_windshaper()
+        self.windcontroller.end_control()
 
     def save_data(self):
         self.data_manager.save_data()
 
     def _check_device_dict(self) -> None:
         for ids, devices in self.device_dict.items():
-            if devices not in (models.OldProbe.OldProbe, models.NewProbe.NewProbe):
+            if devices not in (models.devices.OldProbe.OldProbe, models.devices.NewProbe.NewProbe):
                 raise TypeError(f"[DEVICEMANAGER] Invalid Device detected: {devices}, ID: {ids}")
 
     def _generate_device_instances(self) -> None:
         for ids, devices in self.device_dict.items():
-            new_device = devices(self.windcontroller, ids)
+            new_device = devices(self.windcontroller, ids, self.clock)
             self.registered_devices.append(new_device)
         self.data_manager = DeviceDataManager(self.registered_devices, self.config)
 
@@ -115,7 +118,7 @@ class DeviceManager():
 
         if wind_plot or probe_plot:
             single_device = self.registered_devices[0]
-            single_device.plotter = LivePlotter(single_device.ID ,probe_plot, wind_plot, (self.windcontroller.fan_rows,self.windcontroller.fan_columns))
+            single_device.plotter = LivePlotter(single_device.ID ,probe_plot, wind_plot, (ArrayState.module_rows*3, ArrayState.module_columns*3))
 
 
 

@@ -1,21 +1,22 @@
-from models.windprobe_api import NucleoProbeTransceiver, ProbeRawData
 import threading
 import time
-from models.WindController import WindController
 import math
-import numpy as np
+
+from models.wind.WindController import WindController
+from models.windprobe_api import NucleoProbeTransceiver, ProbeRawData
+from models.experiment.ExperimentClock import ExperimentClock
 
 class OldProbe():
-    def __init__(self,windshaper_instance: WindController, ID):
+    def __init__(self,windshaper_instance: WindController, ID, clock: ExperimentClock):
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
         self.stop_event = threading.Event()
         self.buffer_lock = threading.Lock()
-        self.windshaper = windshaper_instance
+        self.windshaper = windshaper_instance.windwrapper
         self.plotter = None
         self.transceiver = NucleoProbeTransceiver(probe_ready=self.probe_ready,probe_error=self.probe_error,callback_new_probe_data=self._on_new_probe_data)
-        self.start_time = 0
+        self.clock = clock
         self.ID = ID
         self.zeroed_data = [0,0,0,0,0]
 
@@ -46,17 +47,18 @@ class OldProbe():
 
     def _on_new_probe_data(self, raw_probe_data: ProbeRawData) -> None:
         vel = raw_probe_data.windspeed_vels_mps
-        time_elapsed = time.perf_counter() - self.start_time
-        windshape_parameters = self.windshaper.live_snapshot
+        time_elapsed = self.clock.time_elapsed
+        windshape_parameters = self.windshaper.array_state
         row =  [
                 time_elapsed,
-                np.nan_to_num(vel.x - self.zeroed_data[1], nan=0.0),
-                np.nan_to_num(vel.y - self.zeroed_data[2],nan=0.0),
-                np.nan_to_num(vel.z - self.zeroed_data[3],nan=0.0),
-                np.nan_to_num(raw_probe_data.static_pressure_pascal,nan=0.0),
-                np.nan_to_num(raw_probe_data.temperature_celcius,nan=0.0),
-                np.nan_to_num(raw_probe_data.atmospheric_pressure_hpascal,nan=0.0),
-                *windshape_parameters #unpacks all winshape live attributes
+                (vel.x - self.zeroed_data[1]),
+                (vel.y - self.zeroed_data[2]),
+                (vel.z - self.zeroed_data[3]),
+                (raw_probe_data.static_pressure_pascal),
+                (raw_probe_data.temperature_celcius),
+                (raw_probe_data.atmospheric_pressure_hpascal),
+                *windshape_parameters.array_probe_snapshot_upstream,
+                *windshape_parameters.array_probe_snapshot_downstream
             ]
         
         if not self.manual_zero_status:
@@ -83,13 +85,12 @@ class OldProbe():
                 break
             time.sleep(0.01) # limit frequency of error checks
 
-    def start(self,start_time) -> bool:
+    def start(self) -> bool:
         if not self.probe_ready.is_set() or self.probe_error.is_set():
             print("[OLDWINDPROBE] Probe Failed to start, cancelling experiment.")
             return False
         self.error_thread = threading.Thread(target=self._monitor_errors)
         self.error_thread.start()
-        self.start_time = start_time
         self.manual_zero_status = False
         return True
     

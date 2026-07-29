@@ -1,8 +1,9 @@
-from models.ExperimentConfig import ExperimentConfig
-from models.ExperimentRunner import ExperimentRunner
-from models.WindController import WindController
-from models.OldProbe import OldProbe
-from models.NewProbe import NewProbe
+from models.experiment.ExperimentConfig import ExperimentConfig
+from models.experiment.ExperimentRunner import ExperimentRunner
+from models.wind.WindController import WindController
+from models.devices.OldProbe import OldProbe
+from models.devices.NewProbe import NewProbe
+import Profiles
 import time
 
 """
@@ -43,7 +44,6 @@ Configuration Arguments:
     If no manual meta data is provided the system will provide an automated one based on PWM or wind function frequency depending on scenario.
     You must keep the same meta data format for a given configuration series -> otherwise save experiment series will crash.
 
-    - no compatability for two new probes yet.
 
 """
 
@@ -55,10 +55,9 @@ configuration = ExperimentConfig(
             distance_from_wall=0.85,
             probe_position= (0,0),
             repeat=1,
-            # time_crop = (None,None),
-            wall=3,
-            profile=WindController.start_uniform_flow_multifan,
-            profile_arguments= (30,30,20),
+            time_crop = (10,80),
+            wall=2,
+            profile=Profiles.uniform_flow(90,30),
             manual_meta_data={'test':1,'balls':2},
             measurement_device_dict={'id_test_001':OldProbe},
             probe_tracking = False, # as it stands camera tracking sucks 

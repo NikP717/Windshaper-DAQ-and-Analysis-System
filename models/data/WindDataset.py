@@ -6,7 +6,7 @@ from statsmodels.tsa.stattools import adfuller
 from scipy.signal import welch, coherence, correlate, correlation_lags, spectrogram
 from datetime import datetime
 
-from models.DataColumns import DataColumns
+from models.data.DataColumns import DataColumns
 
 class WindDataset:
     def __init__(self, manual_meta = False):
@@ -37,6 +37,9 @@ class WindDataset:
     
     def store_buffered_probe_data(self,buffer_data):
         new_rows = pd.DataFrame(buffer_data, columns=self.probe_data.columns)
+        # fix any errors in data
+        for col in ["windspeed_x", "windspeed_y", "windspeed_z"]:
+            new_rows[col] = pd.to_numeric(new_rows[col], errors="coerce")
         self.probe_data = pd.concat([self.probe_data, new_rows], ignore_index=True)
 
     def crop_data_time(self,timeframe: tuple) -> None:
@@ -80,14 +83,9 @@ class WindDataset:
                 
         for velocities, summary_rows,components in zip([ux,uy,uz],[summary_row_x,summary_row_y,summary_row_z],["x","y","z"]):
             rmv, rsv, adf = self._stationarity_check(velocities, fq_sampling)
-            # print(f"{components}: rmv: {rmv} rsv: {rsv} adf: {adf}")
-            lags, R = self._compute_autocorrelation(statistics_3d[f'u{components}_p'],fq_sampling)
-            # print(f"{components}: lags: {lags} R: {R}")
-            integral_time, integral_length, end_idx = self._compute_integral_scales(lags, R, statistics_3d[f'U{components}'])
-            # print(f"{components}: TI: {integral_time} TL: {integral_length}")
-            summary_rows.extend([rmv,rsv,adf,integral_time,integral_length])
+            summary_rows.extend([rmv,rsv,adf])
 
-        summary_row_3d.extend([0,0,0,0,0]) # not sure if we can plot additional values for 3d yet ************
+        summary_row_3d.extend([0,0,0]) # not sure if we can plot additional values for 3d yet ************
 
         # Write to data sets
         new_row_x = pd.DataFrame([summary_row_x], columns=self.summary_columns)
@@ -114,7 +112,7 @@ class WindDataset:
         return np.array(row_values)
 
     def save_to_xl(self): # DEFAULT PATH IS TO WINDDATA
-        project_dir = Path(__file__).resolve().parent.parent
+        project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDDATA" 
         metadata_values = self.meta_data.iloc[0]
         self._generate_summary_data()
@@ -162,9 +160,9 @@ class WindDataset:
         Calculate means, fluctuations, standard deviations, and turbulence intensities.
         """
 
-        ux = np.nan_to_num(ux, nan=0.0)
-        uy = np.nan_to_num(uy, nan=0.0)
-        uz = np.nan_to_num(uz, nan=0.0)
+        ux = pd.to_numeric(ux, errors="coerce").fillna(0).to_numpy()
+        uy = pd.to_numeric(uy, errors="coerce").fillna(0).to_numpy()
+        uz = pd.to_numeric(uz, errors="coerce").fillna(0).to_numpy()
 
         Ux = np.mean(ux)
         Uy = np.mean(uy)
@@ -221,39 +219,6 @@ class WindDataset:
             adf_pvalue = np.nan
 
         return rolling_mean_variation, rolling_std_variation, adf_pvalue
-    
-    def _compute_autocorrelation(self,signal, fs_hz):
-        signal = np.nan_to_num(signal, nan=0.0)
-        x = signal - np.mean(signal)
-
-        corr_full = correlate(x, x, mode="full", method="auto")
-        lags_samples = correlation_lags(len(x), len(x), mode="full")
-
-        keep = lags_samples >= 0
-        corr = corr_full[keep]
-        lags_samples = lags_samples[keep]
-        corr = corr / corr[0] if corr[0] != 0 else np.zeros_like(corr)
-        lags = lags_samples / fs_hz
-
-        max_samples = min(int(self.max_lag_seconds * fs_hz), len(corr))
-        return lags[:max_samples], corr[:max_samples]
-    
-    
-    def _compute_integral_scales(self, lags, Ruu, Umean_component):
-        zero_crossings = np.where(Ruu <= 0)[0]
-        if len(zero_crossings) > 0 and zero_crossings[0] > 1:
-            end_idx = zero_crossings[0]
-        else:
-            end_idx = len(Ruu)
-
-        Tu = np.trapezoid(Ruu[:end_idx], lags[:end_idx])
-        if not np.isfinite(Tu):
-            Tu = 0
-        Uc = Umean_component if self.convection_speed is None else self.convection_speed
-        Lu = Uc * Tu
-        if not np.isfinite(Lu):
-            Lu = 0
-        return Tu, Lu, end_idx
 
 
 

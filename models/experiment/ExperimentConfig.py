@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Callable
 
 
 @dataclass
@@ -11,8 +11,7 @@ class ExperimentConfig:
 
     # Profile Management
     wall: int # [1,2,3] -> Configure between 1 wall, 2nd wall (slave) or 3 (both)
-    profile: str # Check WindController for profile functions and required arguments
-    profile_arguments: list # Check WindController for profile functions and required arguments
+    profile: Callable # Check Profiles for profile functions and required arguments, feel free to add your own
 
     # Equipment Management
     measurement_device_dict: dict # e.g {OldProbe: probe_1, OldProbe: probe_2, NewProbe: probe_3}, formatting follows: {device_type: custom_id} for unlimited .models probe devices added to this script.

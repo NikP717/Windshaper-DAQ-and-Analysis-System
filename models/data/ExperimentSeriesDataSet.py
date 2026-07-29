@@ -2,12 +2,12 @@ import pandas as pd
 from pathlib import Path
 import shutil
 import pickle
-from models.DataColumns import DataColumns
-from models.WindDataset import WindDataset
+from models.data.DataColumns import DataColumns
+from models.data.WindDataset import WindDataset
 
 class ExperimentSeriesDataSet:
     def __init__(self, name):
-        project_dir = Path(__file__).resolve().parent.parent
+        project_dir = Path(__file__).resolve().parent.parent.parent
         reference_meta_file = next((project_dir / "WINDDATA").glob("*.xlsx"))
         meta_data_cols = WindDataset.load_from_xl(reference_meta_file).meta_data.columns.tolist() # takes a WINDDATA file metadata, important for all winddata files to have identical metadata
         self.columns = (
@@ -36,7 +36,7 @@ class ExperimentSeriesDataSet:
         self._rows.append(listed_vars)
 
     def input_winddata(self):
-        project_dir = Path(__file__).resolve().parent.parent
+        project_dir = Path(__file__).resolve().parent.parent.parent
         data_dir = project_dir / "WINDDATA"
 
         for path in data_dir.iterdir():
@@ -54,7 +54,7 @@ class ExperimentSeriesDataSet:
         # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT
         """Only use for newly created experimental data, forcefully moves Winddata used into this new instance"""
 
-        project_dir = Path(__file__).resolve().parent.parent
+        project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDANALYSIS" / self.name # experiment folder in wind analysis
         raw_data_output = output_dir / "RAWDATA" 
         raw_data_output.mkdir(parents=True, exist_ok=True)

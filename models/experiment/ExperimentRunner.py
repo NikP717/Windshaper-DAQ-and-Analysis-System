@@ -1,7 +1,7 @@
-from models.ExperimentConfig import ExperimentConfig
-from models.ExperimentSeriesDataSet import ExperimentSeriesDataSet
+from models.experiment.ExperimentConfig import ExperimentConfig
+from models.data.ExperimentSeriesDataSet import ExperimentSeriesDataSet
 from models.WindTracker import WindTracker
-from models.DeviceManager import DeviceManager
+from models.devices.DeviceManager import DeviceManager
 
 import threading
 import time
@@ -34,7 +34,7 @@ class ExperimentRunner:
         print("[INFO] Running New Configuration")
         print("---")
         print(f"Input Data: \nDistance Wall: {config.distance_from_wall}, Probe pos: {config.probe_position}, Repeat {config.repeat}")
-        print(f"Wall Selection: {config.wall}, Profile {config.profile.__name__}, Profile Args {config.profile_arguments}")
+        print(f"Wall Selection: {config.wall}, Profile: {config.profile.name}")
         print("---")
         if config.manual_meta_data:
             print(f"Manual Meta Data: {config.manual_meta_data}")
@@ -44,24 +44,24 @@ class ExperimentRunner:
         
 
     def _check_configuration(self) -> None:
-        # wind control protection
-        sig = inspect.signature(self.config.profile)
-        # Filter out 'self' to get the actual expected parameters
-        expected_params = [param for name, param in sig.parameters.items() if name != 'self']
+        # wind control protection -LEGACY WIND CONTROLLER FEATURE
+        # sig = inspect.signature(self.config.profile)
+        # # Filter out 'self' to get the actual expected parameters
+        # expected_params = [param for name, param in sig.parameters.items() if name != 'self']
 
-        if isinstance(self.config.profile_arguments, (tuple, list)):
-            provided_count = len(self.config.profile_arguments)
+        # if isinstance(self.config.profile_arguments, (tuple, list)):
+        #     provided_count = len(self.config.profile_arguments)
             
-            # Count how many arguments are strictly required (no default value)
-            required_params = [p for p in expected_params if p.default is inspect.Parameter.empty]
+        #     # Count how many arguments are strictly required (no default value)
+        #     required_params = [p for p in expected_params if p.default is inspect.Parameter.empty]
             
-            # Error if too few or too many arguments are provided
-            if provided_count < len(required_params) or provided_count > len(expected_params):
-                raise ValueError(
-                    f"[CONFIG ERROR] Incorrect number of arguments for {self.config.profile.__name__}. "
-                    f"Expected between {len(required_params)} and {len(expected_params)}. "
-                    f"Got: {provided_count} arguments."
-                )
+        #     # Error if too few or too many arguments are provided
+        #     if provided_count < len(required_params) or provided_count > len(expected_params):
+        #         raise ValueError(
+        #             f"[CONFIG ERROR] Incorrect number of arguments for {self.config.profile.__name__}. "
+        #             f"Expected between {len(required_params)} and {len(expected_params)}. "
+        #             f"Got: {provided_count} arguments."
+        #         )
         
         # time crop protection
         timeframe = self.config.time_crop

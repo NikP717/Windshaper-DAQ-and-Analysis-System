@@ -61,6 +61,8 @@ class LivePlotter:
 
 
         # ================= WindShaper =================
+
+        
         if self.wind_plot:
             shaper = pg.GraphicsLayoutWidget(show=True, title="WindShaper Live Data")
             shaper.resize(600, 400)
@@ -68,16 +70,19 @@ class LivePlotter:
             fan_plot = shaper.addPlot(row=0, col=0, title="Fan PWM")
             f_legend = fan_plot.addLegend()
             fan_plot.showGrid(x=True, y=True, alpha=0.25)
-
-            curve_pwm = fan_plot.plot(pen='g', name="PWM")
-            curve_ps = fan_plot.plot(pen="r", name= "PWM STD")
+            
+            curve_up_pwm = fan_plot.plot(pen='g', name="PWM Upstream")
+            curve_down_pwm = fan_plot.plot(pen='b', name="PWM Downstream")
 
             rpm_plot = shaper.addPlot(row=1, col=0, title="Fan RPM")
             r_legend = rpm_plot.addLegend()
             rpm_plot.showGrid(x=True, y=True, alpha=0.25)
 
-            curve_rpm = rpm_plot.plot(pen='g', name="RPM")
-            curve_rs = rpm_plot.plot(pen='b', name="RPM STD")
+            curve_up_rpm = rpm_plot.plot(pen='g', name="RPM Upstream")
+            curve__up_rs = rpm_plot.plot(pen='r', name="RPM STD Upstream")
+
+            curve_down_rpm = rpm_plot.plot(pen='b', name="RPM Downstream")
+            curve_down_rs = rpm_plot.plot(pen="magenta", name="RPM STD Downstream")
 
 
             # ================= Fan Map =================
@@ -127,44 +132,15 @@ class LivePlotter:
             p = deque(maxlen=max_points)
         if self.wind_plot:
             t_ws = deque(maxlen=max_points)
-            pwm = deque(maxlen=max_points)
-            rpm = deque(maxlen=max_points)
-            rs = deque(maxlen=max_points)
-            ps = deque(maxlen=max_points)
+            pwm_up = deque(maxlen=max_points)
+            pwm_down = deque(maxlen=max_points)
+            rpm_up = deque(maxlen=max_points)
+            rpm_down = deque(maxlen=max_points)
+            rs_up = deque(maxlen=max_points)
+            rs_down = deque(maxlen=max_points)
 
             downstream_rpm = np.zeros(self.fan_shape)
             upstream_rpm = np.zeros(self.fan_shape)
-            
-
-        def fan_array_to_matrix(rpm_array):
-
-            modules = np.array(rpm_array[0]).reshape(-1, 3, 3)
-
-            rows = int(np.sqrt(len(modules)))
-
-            module_rows = []
-
-            for i in range(rows):
-                module_rows.append(
-                    np.hstack(modules[i*rows:(i+1)*rows])
-                )
-
-            downstream = np.vstack(module_rows)
-            downstream = np.rot90(downstream,k=-1)
-
-            modules = np.array(rpm_array[1]).reshape(-1, 3, 3)
-
-            module_rows = []
-
-            for i in range(rows):
-                module_rows.append(
-                    np.hstack(modules[i*rows:(i+1)*rows])
-                )
-
-            upstream = np.vstack(module_rows)
-            upstream =  np.rot90(upstream,k=-1) # this is a temporary fix because i havent understood modules callback indexing yet, im sorry future me
-            return downstream, upstream
-
 
         timer = QtCore.QTimer()
 
@@ -187,14 +163,16 @@ class LivePlotter:
 
                 if self.wind_plot:
                     t_ws.append(row[0])
-                    pwm.append(row[7])
-                    rpm.append(row[8])
-                    rs.append(row[11])
-                    ps.append(row[10])
-                    try:
-                        downstream_rpm, upstream_rpm = fan_array_to_matrix(row[13])
-                    except ValueError:
-                        pass
+                    pwm_up.append(row[7])
+                    rpm_up.append(row[8])
+                    rs_up.append(row[9])
+
+                    pwm_down.append(row[11])
+                    rpm_down.append(row[12])
+                    rs_down.append(row[13])
+
+                    upstream_rpm = row[10]
+                    downstream_rpm = row[14]
 
             if self.probe_plot:
                 curve_x.setData(t_pr, x)
@@ -203,10 +181,14 @@ class LivePlotter:
                 curve_p.setData(t_pr, p)
 
             if self.wind_plot:
-                curve_pwm.setData(t_ws, pwm)
-                curve_ps.setData(t_ws, ps)
-                curve_rpm.setData(t_ws, rpm)
-                curve_rs.setData(t_ws, rs)
+                curve_up_pwm.setData(t_ws, pwm_up)
+                curve_down_pwm.setData(t_ws, pwm_down)
+
+                curve_up_rpm.setData(t_ws, rpm_up)
+                curve_down_rpm.setData(t_ws, rpm_down)
+
+                curve__up_rs.setData(t_ws, rs_up)
+                curve_down_rs.setData(t_ws, rs_down)
                 downstream_img.setImage(downstream_rpm, autoLevels=False)
                 upstream_img.setImage(upstream_rpm, autoLevels=False)
 
@@ -218,9 +200,9 @@ class LivePlotter:
                 update_legend(v_legend,[f"Vx: {x[-1]:.3f} m/s",f"Vy: {y[-1]:.3f} m/s",f"Vz: {z[-1]:.3f} m/s"])
                 update_legend(p_legend,[f"Stat P: {p[-1]:.0f} Pa"])
 
-            if self.wind_plot and len(rpm):
-                update_legend(r_legend,[f"Mean RPM: {rpm[-1]:.0f}",f"RPM STD: {rs[-1]:.0f}"])
-                update_legend(f_legend,[f"Mean PWM: {pwm[-1]:.0f}",f"PWM STD: {ps[-1]:.0f}"])
+            if self.wind_plot and len(rpm_up):
+                update_legend(r_legend,[f"Mean Upstream RPM: {rpm_up[-1]:.0f}",f"RPM Upstream STD: {rs_up[-1]:.0f}",f"Mean Downstream RPM: {rpm_down[-1]:.0f}",f"RPM Downstream STD: {rs_down[-1]:.0f}"])
+                update_legend(f_legend,[f"Mean Upstream PWM: {pwm_up[-1]:.0f}",f"Mean Downstream PWM: {pwm_down[-1]:.0f}"])
 
         timer.timeout.connect(update)
         timer.start(33)

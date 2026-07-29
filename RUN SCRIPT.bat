@@ -1,1 +1,1 @@
-uv run python -i configure_experiment.py
+uv run python -i ConfigureExperiment.py
