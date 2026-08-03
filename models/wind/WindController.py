@@ -16,25 +16,28 @@ class WindController():
         # profile is a list of profile steps, profile step is a list of fan commands
         self.clock.start_timer()
         executed_steps = set()
+        try:
+            while not self.stop_event.wait(1/self.check_hz):
 
-        while not self.stop_event.wait(1/self.check_hz):
+                time_elapsed = self.clock.timer_time_elapsed
 
-            time_elapsed = self.clock.timer_time_elapsed
+                if time_elapsed >= profile.duration:
+                    self.stop_event.set()
 
-            if time_elapsed >= profile.duration:
-                self.stop_event.set()
-
-            for i, step in enumerate(profile.steps): # multi time step functions
-                if i not in executed_steps and time_elapsed >= step.time:
-                    for command in step.commands:
-                        self.windwrapper.add_instr(command.selection,command.instruction,command.mode_type)
-            
-                    self.windwrapper.apply_instructions()
-
-                    executed_steps.add(i) # better than adding the step function
-
-        if not self.windwrapper.stop_status:
-            self.stop_control()
+                for i, step in enumerate(profile.steps): # multi time step functions
+                    if i not in executed_steps and time_elapsed >= step.time:
+                        for command in step.commands:
+                            self.windwrapper.add_instr(command.selection,command.instruction,command.mode_type)
+                
+                        self.windwrapper.apply_instructions()
+                        if command.mode_type == "pwm": # pwm executed steps dont need to be repeated so we ignore them once executed
+                            # windfunctions need to be evaluated at every time step, so continuously fed through.
+                            executed_steps.add(i) 
+        except KeyboardInterrupt:
+            pass
+        finally:
+            if not self.windwrapper.stop_status:
+                self.stop_control()
 
     def stop_control(self):
         self.windwrapper.stop_windshaper()

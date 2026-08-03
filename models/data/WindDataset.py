@@ -119,10 +119,7 @@ class WindDataset:
         if self.manual_meta:
             experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_R{metadata_values['repeat']}"
         else:
-            if float(metadata_values['wind_fq']) == 0:
-                experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_PWM{int(metadata_values['fan_pwm'])}U{int(metadata_values['upstream_pwm'])}D{int(metadata_values['downstream_pwm'])}_DST{str(metadata_values['distance_from_wall']).replace('.','_')}_X{metadata_values['probe_pos_x']}_Y{metadata_values['probe_pos_y']}_R{metadata_values['repeat']}"
-            else:
-                experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_FQ{str(metadata_values['wind_fq']).replace('.','_')}_AMP{str(metadata_values['wind_amplitude']).replace('.','_')}_AVG_AMP{str(metadata_values['wind_avg']).replace('.','_')}_DST{str(metadata_values['distance_from_wall']).replace('.','_')}_X{metadata_values['probe_pos_x']}_Y{metadata_values['probe_pos_y']}_R{metadata_values['repeat']}"
+            experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_PWMU{int(metadata_values['upstream_pwm'])}D{int(metadata_values['downstream_pwm'])}_DST{str(metadata_values['distance_from_wall']).replace('.','_')}_X{metadata_values['probe_pos_x']}_Y{metadata_values['probe_pos_y']}_R{metadata_values['repeat']}"
         file_name = f"{experiment_name}.xlsx"
         output = output_dir / file_name
 

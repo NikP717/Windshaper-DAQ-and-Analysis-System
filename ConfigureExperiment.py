@@ -48,27 +48,23 @@ Configuration Arguments:
 """
 
 #%% LOOP THROUGH CONFIGURATIONS HERE
-# start_sine_response(self,average,frequency,amplitude,duration)
-#start_boundary_layer(self,pwm_max,alpha,duration,fan_layer=None):
 configuration = ExperimentConfig(
             pause_time=0,
             distance_from_wall=0.85,
             probe_position= (0,0),
             repeat=1,
-            time_crop = (10,80),
+            time_crop = (20,180), # OPTIONAL
             wall=2,
-            profile=Profiles.uniform_flow(90,30),
-            manual_meta_data={'test':1,'balls':2},
-            measurement_device_dict={'id_test_001':OldProbe},
-            probe_tracking = False, # as it stands camera tracking sucks 
+            profile=Profiles.uniform_flow(0,120),
+            manual_meta_data=None,
+            measurement_device_dict={'probe_1':OldProbe},
+            probe_tracking = False, 
             live_probe_data = True,
             live_windshaper_data = True
         )
-#  def start_uniform_flow_multifan(self,pwm_upstream_instr,pwm_downstream_instr,duration):
+
 if __name__ == "__main__":
     ExperimentRunner.run_configuration(configuration)
-    name = "WONTWORK_TEST"
-    ExperimentRunner.save_configuration_series(name)
+    # name = "RESULTS_TEST"
+    # ExperimentRunner.save_configuration_series(name) # OPTIONAL
 
-
-#%% SAVE EXPERIMENT SERIES OF DATA

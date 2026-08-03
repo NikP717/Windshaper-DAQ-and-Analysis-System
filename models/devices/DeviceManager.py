@@ -107,7 +107,7 @@ class DeviceManager():
         for ids, devices in self.device_dict.items():
             new_device = devices(self.windcontroller, ids, self.clock)
             self.registered_devices.append(new_device)
-        self.data_manager = DeviceDataManager(self.registered_devices, self.config)
+        self.data_manager = DeviceDataManager(self.windcontroller,self.registered_devices, self.config)
 
     def _set_live_plotting_instances(self) -> None:
         # CURRENTLY LIVE PLOTTER ONLY SUPPORTS ONE DEVICE

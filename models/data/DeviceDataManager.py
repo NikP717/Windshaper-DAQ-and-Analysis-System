@@ -3,10 +3,13 @@ import time
 from models.data.WindDataset import WindDataset
 from models.data.ExperimentSeriesDataSet import ExperimentSeriesDataSet
 from models.experiment.ExperimentConfig import ExperimentConfig
+from models.wind.WindState import ArrayState
 
 class DeviceDataManager():
-    def __init__(self,registered_devices_list: list, config: ExperimentConfig):
+    def __init__(self,windcontroller_instance,registered_devices_list: list, config: ExperimentConfig):
         self.registered_devices_list = registered_devices_list
+        self.windcontroller = windcontroller_instance
+        self.windshaper = windcontroller_instance.windwrapper
         self.config = config
         self.data_instance_dict = {}
         self._create_winddata()
@@ -19,17 +22,14 @@ class DeviceDataManager():
     def set_metadata(self):
         for device, data in self.data_instance_dict.items():
             if not self.config.manual_meta_data:
+                array_state = self.windshaper.array_state
                 meta_data = {'probe_id':device.ID,
-                            'fan_pwm':self.windshaper.pwm_instructions,
-                            'upstream_pwm':self.windshaper.pwm_upstream_instr,
-                            'downstream_pwm':self.windshaper.pwm_downstream_instr,
+                            'upstream_pwm':array_state.current_avg_upstream_pwm_instr,
+                            'downstream_pwm':array_state.current_avg_downstream_pwm_instr,
                             'distance_from_wall':self.config.distance_from_wall,
                             'probe_pos_x':self.config.probe_position[0],
                             'probe_pos_y':self.config.probe_position[1],
-                            'repeat':self.config.repeat,
-                            'wind_fq':self.windshaper.windfunct_fq,
-                            'wind_amplitude':self.windshaper.windfunct_amplitude,
-                            'wind_avg':self.windshaper.windfunct_average}
+                            'repeat':self.config.repeat}
             else:
                 meta_data = self.config.manual_meta_data
                 meta_data['repeat'] = self.config.repeat

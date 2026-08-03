@@ -1,11 +1,10 @@
 from windsuite_sdk import WindsuiteSDK, ModuleInfo
 from dotenv import load_dotenv
 import os
-import numpy as np
-import time
 
 from models.wind.WindState import FanState, ModuleState, ArrayState
 from models.wind.FanSelection import FanSelection
+from itertools import zip_longest
 
 class WindsuiteManager():
     def __init__(self, fan_wall_selection) -> None:
@@ -36,7 +35,8 @@ class WindsuiteManager():
         self.stop_status = False
 
         # Active Command Storage before running
-        self.commands = []
+        self.pwm_commands = []
+        self.functions = []
         
     def start_windshaper(self) -> WindsuiteSDK:
         load_dotenv()
@@ -56,6 +56,8 @@ class WindsuiteManager():
         self.sdk_instance.set_psu(state=True)
 
     def stop_windshaper(self) -> None:
+        self.pwm_commands.clear()
+        self.functions.clear()
         self.fan_controller.set_intensity(0).apply()
         self.stop_status = True
         print("[WINDCONTROL] Fans stopped.")
@@ -83,22 +85,51 @@ class WindsuiteManager():
     def add_instr(self, selection: FanSelection, command, mode_type: str):
         # command int or wind function as per windsuite sdk requirements
         if mode_type == "pwm":
-            self.commands.append([selection,command,'pwm'])
+            self.pwm_commands.append([selection,command,'pwm'])
+        elif mode_type == "func":
+            self.functions.append([selection,command,'func'])
         else:
-            self.commands.append([selection,command,'func'])
+            raise TypeError(f"Unknown command mode type: {mode_type}")
 
     def apply_instructions(self):
-        for selection, instr, tag in self.commands:
-            if tag == "pwm":
+        for pwm, func in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
+            if pwm is not None:
+                selection, instr, _ = pwm
                 controller = selection.apply(self.fan_controller)
                 controller.set_intensity(percent=instr)
-            else:
+
                 controller = selection.apply(self.fan_controller)
-                controller.set_intensity_function(instr)
+                controller.set_intensity(percent=instr)
+
+            if func is not None:
+                selection_func, instr_func, _ = func
+                controller = selection_func.apply(self.fan_controller)
+                controller.set_intensity_function(instr_func)
+            
+                controller = selection_func.apply(self.fan_controller)
+                controller.set_intensity_function(instr_func)
 
         controller.apply()
-        self.commands.clear()
-        
+        self.pwm_commands.clear()
+
+    # def _apply_windfunction(self,windfunction,duration):
+    #     try:
+    #         self.windshaper.set_psu(state=True)
+    #         self.stop_event.wait(timeout=2)
+    #         start_time = time.time()
+
+    #         while not self.stop_event.wait(timeout=(1/25)):
+    #             time_elapsed = time.time() - start_time
+    #             self.windshaper.fan_controller.set_intensity_function(windfunction).apply()
+    #             if time_elapsed > duration:
+    #                 break
+    #     except KeyboardInterrupt:
+    #         print("\n[WINDCONTROL] Shutting down...")
+    #         self.stop_event.set()
+    #     finally:
+    #         self.stop_windshaper()
+
+
     def _on_module_update(self,data: dict[tuple[int, int], ModuleInfo]) -> None: 
         modules = []
         for (row, col), module_info in data.items():

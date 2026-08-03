@@ -4,7 +4,7 @@ from models.wind.FanSelection import FanSelection
 @dataclass
 class FanCommand:
     selection: FanSelection
-    mode_type: str # 'func' or 'pwm'
+    mode_type: str # 'func' or 'pwm' 
     instruction: object # either pwm or wind function definition
 
 @dataclass

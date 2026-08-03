@@ -10,25 +10,21 @@ class DataColumns:
         "avg_up_pwm",
         "avg_up_rpm",
         "std_up_rpm",
+        "rpm_up_array",
         "avg_down_pwm",
         "avg_down_rpm",
         "std_down_rpm",
-        "rpm_up_array",
-        "rpm_down_array"
+        "rpm_down_array",
     ]
 
     META_COLUMNS = [ # u wouldnt benefit from changing this because the manual metadata exists already
         "probe_id",
-        "fan_pwm",
         "upstream_pwm",
         "downstream_pwm",
         "distance_from_wall",
         "probe_pos_x",
         "probe_pos_y",
         "repeat",
-        "wind_fq",
-        "wind_amplitude",
-        "wind_avg",
     ]
 
     SUMMARY_COLUMNS = [ # changing this means you have to change what WindData calculates as summary data
