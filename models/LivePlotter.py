@@ -173,7 +173,6 @@ class LivePlotter:
 
                     upstream_rpm = row[10]
                     downstream_rpm = row[14]
-
             if self.probe_plot:
                 curve_x.setData(t_pr, x)
                 curve_y.setData(t_pr, y)
@@ -189,6 +188,10 @@ class LivePlotter:
 
                 curve__up_rs.setData(t_ws, rs_up)
                 curve_down_rs.setData(t_ws, rs_down)
+
+                # Need to rotate so display shows it intuitively
+                upstream_rpm = np.rot90(upstream_rpm, k=-1)
+                downstream_rpm = np.rot90(downstream_rpm, k=-1)
                 downstream_img.setImage(downstream_rpm, autoLevels=False)
                 upstream_img.setImage(upstream_rpm, autoLevels=False)
 

@@ -96,7 +96,6 @@ class ArrayState:
             c = (module.col - 1) * 3
 
             matrix[r:r+3, c:c+3] = module.rpm_matrix(layer)
-
         return matrix
 
     @property

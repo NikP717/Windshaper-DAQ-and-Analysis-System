@@ -1,11 +1,9 @@
-from models.ExperimentSeriesDataSet import ExperimentSeriesDataSet
-from models.WindDataset import WindDataset
+from models.data.ExperimentSeriesDataSet import ExperimentSeriesDataSet
+from models.data.WindDataset import WindDataset
 from pathlib import Path
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit
-from scipy.signal import correlate, correlation_lags, welch
 import regex as re
 import scipy.io as sio
 
@@ -30,15 +28,6 @@ class WindAnalyser:
         data_dir = dir / f"{experiment_name}.pkl"
         dataset_obj = ExperimentSeriesDataSet.load(data_dir)
         return dataset_obj.data_set
-    
-    # @classmethod
-    # def load_experiment_dataset_timecropped(cls, experiment_name: str, time_1:float, time_2:float) -> pd.DataFrame:
-    #     cls.experiment_name = experiment_name
-    #     dir = cls._locate_working_directory()
-    #     data_dir = dir / f"{experiment_name}.pkl"
-    #     dataset_obj = ExperimentSeriesDataSet.load(data_dir)
-    #     dataset_obj.timecrop_all_experiments(time_1,time_2)
-    #     return dataset_obj.data_set
 
     @staticmethod
     def _mean_mixed(series): # for column averaging
@@ -155,43 +144,14 @@ class WindAnalyser:
         clean_mean_dataset = cls.average_dataset(clean_dataset)
         return clean_dataset, clean_mean_dataset, outlier_dataset
 
-
-# import pandas as pd
-
-# def separate_dataset_outliers(mean_dataset, dataset, groups_to_check):
-#     Initialize a mask of all Falses (no outliers detected yet)
-#     global_outlier_mask = pd.Series(False, index=dataset.index)
-    
-#     for col in groups_to_check:
-#         try:
-#             mean_data = mean_dataset[col]
-#             column = dataset[col]
-#             mean_data_std_col = mean_dataset[f"{col}_std"]
-#         except KeyError:
-#             raise KeyError(f"Column '{col}' or '{col}_std' missing.")
-        
-#         Calculate condition for the current column
-#         Note: Added parentheses around arithmetic to guarantee correct pandas evaluation order
-#         upper_bound = (2 * mean_data_std_col) + mean_data
-#         lower_bound = mean_data - (2 * mean_data_std_col)
-        
-#         current_outlier_condition = (column > upper_bound) | (column < lower_bound)
-        
-#         Accumulate outliers across columns using OR (|)
-#         global_outlier_mask = global_outlier_mask | current_outlier_condition
-        
-#     Split the original dataset safely AFTER checking all columns
-#     Tilde (~) flips True to False, keeping standard data rows
-#     clean_dataset = dataset[~global_outlier_mask]
-#     outlier_dataset = dataset[global_outlier_mask]
-    
-#     return clean_dataset, outlier_dataset
-
-
-
     @staticmethod
     def show_dataset_columns(dataset: pd.DataFrame) -> None:
         print(", ".join(dataset.columns.astype(str)))
+
+    @staticmethod
+    def pandas_list_to_list(pd_list) -> list:
+        return list(pd_list[0])
+
     
     @staticmethod
     def show_dataset_summary(dataset: pd.DataFrame) -> None:

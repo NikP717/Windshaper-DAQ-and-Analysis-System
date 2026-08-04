@@ -1,6 +1,5 @@
 from models.experiment.ExperimentConfig import ExperimentConfig
 from models.experiment.ExperimentRunner import ExperimentRunner
-from models.wind.WindController import WindController
 from models.devices.OldProbe import OldProbe
 from models.devices.NewProbe import NewProbe
 import Profiles
@@ -48,23 +47,41 @@ Configuration Arguments:
 """
 
 #%% LOOP THROUGH CONFIGURATIONS HERE
-configuration = ExperimentConfig(
-            pause_time=0,
-            distance_from_wall=0.85,
-            probe_position= (0,0),
-            repeat=1,
-            time_crop = (20,180), # OPTIONAL
-            wall=2,
-            profile=Profiles.uniform_flow(0,120),
-            manual_meta_data=None,
-            measurement_device_dict={'probe_1':OldProbe},
-            probe_tracking = False, 
-            live_probe_data = True,
-            live_windshaper_data = True
-        )
+# configuration = ExperimentConfig(
+#             pause_time=0,
+#             distance_from_wall=0.85,
+#             probe_position= (0,0),
+#             repeat=1,
+#             time_crop = (20,180), # OPTIONAL
+#             wall=4,
+#             profile=Profiles.uniform_flow(30,120),
+#             manual_meta_data=None,
+#             measurement_device_dict={'probe_1':OldProbe},
+#             probe_tracking = False, 
+#             live_probe_data = True,
+#             live_windshaper_data = True
+#         )
+
+repeats = [1]
+positions= [(16,24),(16,16),(16,8)]
 
 if __name__ == "__main__":
-    ExperimentRunner.run_configuration(configuration)
-    # name = "RESULTS_TEST"
+    for r in repeats:
+        for pos in positions:
+            input(f"Move to {pos}, Enter when ready. Remember to replug probe")
+            configuration = ExperimentConfig(
+                pause_time = 0,
+                distance_from_wall = 0.85,
+                probe_position=pos,
+                measurement_device_dict={'probe_01': OldProbe},
+                repeat=r,
+                time_crop=(10,70),
+                wall=2,
+                profile=Profiles.uniform_flow(30,80),
+                live_probe_data=True
+            )
+            ExperimentRunner.run_configuration(configuration)
+
+    # name = "Prelim_Spatial_Test_TEST"
     # ExperimentRunner.save_configuration_series(name) # OPTIONAL
 

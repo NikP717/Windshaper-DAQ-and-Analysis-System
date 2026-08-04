@@ -1,4 +1,4 @@
-from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, WindProfile
+from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand
 from models.wind.FanSelection import FanSelection
 from models.wind.WindState import ArrayState
 from math import sin, pi
@@ -7,6 +7,11 @@ import numpy as np
 ALL_FANS = FanSelection()
 UPSTREAM_FANS = FanSelection(layer="upstream")
 DOWNSTREAM_FANS = FanSelection(layer="downstream")
+
+# MODULE_ROWS = int(ArrayState.array_fan_rows) / 3
+# MODULE_COLUMNS = int(ArrayState.array_fan_columns) /3
+# FAN_ROWS = ArrayState.array_fan_rows
+# FAN_COLUMNS = ArrayState.array_fan_columns
 
 def uniform_flow(pwm, duration):
     name = "uniform_flow"
@@ -85,17 +90,21 @@ def ramp_response(start_pwm, end_pwm, pwm_rate, duration_peak_ramp, duration_bef
 def alpha_boundary_layer(alpha, top_pwm, duration):
     name="alpha_bl"
     profile=WindProfileBuilder(duration)
-
+    # TO BE FIXED USING NEW FAN ROWS FEATURE
     def alpha_bl_func(x_pos: float, y_pos: float, time: float):
         rows = ArrayState.module_rows * 3
         y_max = rows * ArrayState.DIST_BETWEEN_FANS
-        intensity = (y_pos/y_max)**alpha * top_pwm
+        print(f"{y_pos} position, {y_max} max")
+        try:
+            intensity = int((1 - y_pos/y_max)**alpha) * top_pwm
+        except TypeError: # when it becomes complex because it exceeds ymax
+            intensity = alpha * top_pwm
         return intensity
 
     profile.at_time(0,
                     FanCommand(selection=ALL_FANS,mode_type="func",instruction=alpha_bl_func)
                     )
-    
+    pass
     return profile.build(name)
 
 def sine_checkered_array(upstream_sine_amp_1, downstream_sine_amp_1, upstream_sine_amp_2, downstream_sine_amp_2, upstream_sine_fq_1, downstream_sine_fq_1, upstream_sine_fq_2, downstream_sine_fq_2, mean_pwm,duration):

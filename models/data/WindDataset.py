@@ -3,8 +3,8 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 from statsmodels.tsa.stattools import adfuller
-from scipy.signal import welch, coherence, correlate, correlation_lags, spectrogram
 from datetime import datetime
+import pickle
 
 from models.data.DataColumns import DataColumns
 
@@ -109,13 +109,34 @@ class WindDataset:
             row_values.extend(self.summary_data_z.iloc[-1].tolist())
         if len(self.summary_data_3d) > 0:
             row_values.extend(self.summary_data_3d.iloc[-1].tolist())
-        return np.array(row_values)
+        return row_values
+
+    def save_obj(self):
+        """Saves object class as a pickle instance"""
+        project_dir = Path(__file__).resolve().parent.parent.parent
+        metadata_values = self.meta_data.iloc[0]
+        output_dir = project_dir / "WINDDATA" 
+        if self.manual_meta:
+            experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_R{metadata_values['repeat']}"
+        else:
+            experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_PWMU{int(metadata_values['upstream_pwm'])}D{int(metadata_values['downstream_pwm'])}_DST{str(metadata_values['distance_from_wall']).replace('.','_')}_X{metadata_values['probe_pos_x']}_Y{metadata_values['probe_pos_y']}_R{metadata_values['repeat']}"
+        filename = output_dir / f"{experiment_name}.pkl"
+        self._generate_summary_data()
+        with open(filename,"wb") as file:
+            pickle.dump(self, file)
+
+    @classmethod
+    def load(cls,path):
+        """Loads complete dataset object"""
+        with open(path, "rb") as file:
+            loaded_object = pickle.load(file)
+            return loaded_object
 
     def save_to_xl(self): # DEFAULT PATH IS TO WINDDATA
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDDATA" 
         metadata_values = self.meta_data.iloc[0]
-        self._generate_summary_data()
+        # self._generate_summary_data() -> in the way this code works summary data already exists.
         if self.manual_meta:
             experiment_name = f"PRB{str(metadata_values['probe_id']).replace('.','_')}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_R{metadata_values['repeat']}"
         else:
@@ -130,6 +151,7 @@ class WindDataset:
             self.summary_data_y.to_excel(writer, sheet_name="summary_data_y", index=False)
             self.summary_data_z.to_excel(writer, sheet_name="summary_data_z", index=False)
             self.summary_data_3d.to_excel(writer, sheet_name="summary_data_3d", index=False)
+        return output
 
     @classmethod
     def load_from_xl(cls, path): # NO DEFAULT PATH

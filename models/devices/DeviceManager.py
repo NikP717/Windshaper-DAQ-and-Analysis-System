@@ -111,6 +111,8 @@ class DeviceManager():
 
     def _set_live_plotting_instances(self) -> None:
         # CURRENTLY LIVE PLOTTER ONLY SUPPORTS ONE DEVICE
+        wind_plot = False
+        probe_plot = False
         if self.config.live_probe_data:
             probe_plot = True 
         if self.config.live_windshaper_data:

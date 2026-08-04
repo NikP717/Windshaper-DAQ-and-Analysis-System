@@ -8,8 +8,8 @@ from models.data.WindDataset import WindDataset
 class ExperimentSeriesDataSet:
     def __init__(self, name):
         project_dir = Path(__file__).resolve().parent.parent.parent
-        reference_meta_file = next((project_dir / "WINDDATA").glob("*.xlsx"))
-        meta_data_cols = WindDataset.load_from_xl(reference_meta_file).meta_data.columns.tolist() # takes a WINDDATA file metadata, important for all winddata files to have identical metadata
+        reference_meta_file = next((project_dir / "WINDDATA").glob("*.pkl"))
+        meta_data_cols = WindDataset.load(reference_meta_file).meta_data.columns.tolist() # takes a WINDDATA file metadata, important for all winddata files to have identical metadata
         self.columns = (
             [f"{c}_list" for c in DataColumns.PROBE_COLUMNS]
             + meta_data_cols
@@ -30,7 +30,7 @@ class ExperimentSeriesDataSet:
         # list variables, e.g velocity over time instead of just average as defined above in columns
         keys = data.probe_data.columns
         for key in keys:
-             listed_vars.append(data.probe_data[key]) 
+            listed_vars.append(data.probe_data[key].tolist()) 
         data_row = data.compact_data_to_row()
         listed_vars.extend(data_row)
         self._rows.append(listed_vars)
@@ -40,9 +40,11 @@ class ExperimentSeriesDataSet:
         data_dir = project_dir / "WINDDATA"
 
         for path in data_dir.iterdir():
-             if path.is_file() and path.suffix in ['.xlsx', '.xls']:
-                  data_set = WindDataset.load_from_xl(path)
-                  self._add_experiment(data_set)
+             if path.is_file() and path.suffix in ['.pkl']:
+                  winddata = WindDataset.load(path)
+                  self._add_experiment(winddata)
+                  new_path = winddata.save_to_xl()
+                  self.processed_files.append(new_path)
                   self.processed_files.append(path)
 
     def save(self, remove_raw_data = False):
@@ -51,32 +53,22 @@ class ExperimentSeriesDataSet:
         # > > EXCEL SHEET OF OVERALL DATA SET
         # > > PICKLED OBJECT CLASS IF BEING LOADED LATER
         # > > RAWDATA (FOLDER)
-        # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT
+        # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT IN EXCEL FORM
         """Only use for newly created experimental data, forcefully moves Winddata used into this new instance"""
 
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDANALYSIS" / self.name # experiment folder in wind analysis
         raw_data_output = output_dir / "RAWDATA" 
         raw_data_output.mkdir(parents=True, exist_ok=True)
+
         for paths in self.processed_files:
              if paths.exists():
                 if remove_raw_data:
                     paths.unlink()
                 else:
                     shutil.move(paths, raw_data_output)
-        try:
-            self.data_set = pd.DataFrame(self._rows, columns=self.columns)
-        except ValueError as e:
-            print("NUMBER OF COLUMNS:", len(self.columns))
-            print("COLUMN NAMES:", self.columns)
 
-            for i, row in enumerate(self._rows):
-                if len(row) != len(self.columns):
-                    print("BAD ROW:", i)
-                    print("ROW LENGTH:", len(row))
-                    print("ROW DATA:", row)
-
-            raise e
+        self.data_set = pd.DataFrame(self._rows, columns=self.columns)
         self._rows.clear() # saves data storage
         self.processed_files.clear() # saves data storage
         self._save_obj(output_dir)

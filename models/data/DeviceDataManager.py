@@ -1,9 +1,7 @@
 import threading
 import time
 from models.data.WindDataset import WindDataset
-from models.data.ExperimentSeriesDataSet import ExperimentSeriesDataSet
 from models.experiment.ExperimentConfig import ExperimentConfig
-from models.wind.WindState import ArrayState
 
 class DeviceDataManager():
     def __init__(self,windcontroller_instance,registered_devices_list: list, config: ExperimentConfig):
@@ -51,5 +49,5 @@ class DeviceDataManager():
     def save_data(self):
         for device, data in self.data_instance_dict.items():
             data.crop_data_time(self.config.time_crop)
-            data.save_to_xl()
+            data.save_obj()
         print("[DEVICEDATAMANAGER] Data Saved to WINDDATA, ending current instance...")
