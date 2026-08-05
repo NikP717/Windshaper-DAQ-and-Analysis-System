@@ -6,7 +6,6 @@ from models.devices.DeviceManager import DeviceManager
 import threading
 import time
 import readchar
-import inspect
 
 class ExperimentRunner:
     def __init__(self,config: ExperimentConfig) -> None:
@@ -44,25 +43,6 @@ class ExperimentRunner:
         
 
     def _check_configuration(self) -> None:
-        # wind control protection -LEGACY WIND CONTROLLER FEATURE
-        # sig = inspect.signature(self.config.profile)
-        # # Filter out 'self' to get the actual expected parameters
-        # expected_params = [param for name, param in sig.parameters.items() if name != 'self']
-
-        # if isinstance(self.config.profile_arguments, (tuple, list)):
-        #     provided_count = len(self.config.profile_arguments)
-            
-        #     # Count how many arguments are strictly required (no default value)
-        #     required_params = [p for p in expected_params if p.default is inspect.Parameter.empty]
-            
-        #     # Error if too few or too many arguments are provided
-        #     if provided_count < len(required_params) or provided_count > len(expected_params):
-        #         raise ValueError(
-        #             f"[CONFIG ERROR] Incorrect number of arguments for {self.config.profile.__name__}. "
-        #             f"Expected between {len(required_params)} and {len(expected_params)}. "
-        #             f"Got: {provided_count} arguments."
-        #         )
-        
         # time crop protection
         timeframe = self.config.time_crop
         if timeframe:
@@ -120,6 +100,7 @@ class ExperimentRunner:
 
         self.device_manager.start_devices() # handles running of devices and windshaper too 
         self.device_manager.save_data() # saves data once devices are finished
+        self.device_manager.stop_devices()
 
         # Additional pause time for instructed repetitive instances.
         if self.config.pause_time:

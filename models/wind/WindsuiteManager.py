@@ -1,9 +1,11 @@
 from windsuite_sdk import WindsuiteSDK, ModuleInfo
 from dotenv import load_dotenv
 import os
+import math
 
 from models.wind.WindState import FanState, ModuleState, ArrayState
 from models.wind.FanSelection import FanSelection
+from models.wind.WindProfileBuilder import ControlMode
 from itertools import zip_longest
 
 class WindsuiteManager():
@@ -37,6 +39,7 @@ class WindsuiteManager():
         # Active Command Storage before running
         self.pwm_commands = []
         self.functions = []
+       
         
     def start_windshaper(self) -> WindsuiteSDK:
         load_dotenv()
@@ -84,51 +87,37 @@ class WindsuiteManager():
 
     def add_instr(self, selection: FanSelection, command, mode_type: str):
         # command int or wind function as per windsuite sdk requirements
-        if mode_type == "pwm":
-            self.pwm_commands.append([selection,command,'pwm'])
-        elif mode_type == "func":
-            self.functions.append([selection,command,'func'])
-        else:
-            raise TypeError(f"Unknown command mode type: {mode_type}")
+        if mode_type == ControlMode.PWM or mode_type == "pwm":
+            self.pwm_commands.append([selection,command])
+        elif mode_type == ControlMode.FUNCTION or mode_type == "func":
+            self.functions.append([selection,command])
 
-    def apply_instructions(self):
-        for pwm, func in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
-            if pwm is not None:
-                selection, instr, _ = pwm
-                controller = selection.apply(self.fan_controller)
-                controller.set_intensity(percent=instr)
+    def apply_instructions(self):  
+            for pwm, func, in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
+                if pwm is not None:
+                    if math.isnan(pwm[1]): 
+                        self.stop_windshaper()
+                        raise ValueError("Invalid PWM")
+                    if pwm[1]> 65:
+                        self.stop_windshaper()
+                        raise ValueError("PWM Exceeds safety limit.")
+                    selection, instr = pwm
+                    controller = selection.apply(self.fan_controller)
+                    controller.set_intensity(percent=instr)
 
-                controller = selection.apply(self.fan_controller)
-                controller.set_intensity(percent=instr)
+                    controller = selection.apply(self.fan_controller)
+                    controller.set_intensity(percent=instr)
 
-            if func is not None:
-                selection_func, instr_func, _ = func
-                controller = selection_func.apply(self.fan_controller)
-                controller.set_intensity_function(instr_func)
-            
-                controller = selection_func.apply(self.fan_controller)
-                controller.set_intensity_function(instr_func)
+                if func is not None:
+                    selection_func, instr_func = func
+                    controller = selection_func.apply(self.fan_controller)
+                    controller.set_intensity_function(instr_func)
+                
+                    controller = selection_func.apply(self.fan_controller)
+                    controller.set_intensity_function(instr_func)
 
-        controller.apply()
-        self.pwm_commands.clear()
-
-    # def _apply_windfunction(self,windfunction,duration):
-    #     try:
-    #         self.windshaper.set_psu(state=True)
-    #         self.stop_event.wait(timeout=2)
-    #         start_time = time.time()
-
-    #         while not self.stop_event.wait(timeout=(1/25)):
-    #             time_elapsed = time.time() - start_time
-    #             self.windshaper.fan_controller.set_intensity_function(windfunction).apply()
-    #             if time_elapsed > duration:
-    #                 break
-    #     except KeyboardInterrupt:
-    #         print("\n[WINDCONTROL] Shutting down...")
-    #         self.stop_event.set()
-    #     finally:
-    #         self.stop_windshaper()
-
+                controller.apply()
+            self.pwm_commands.clear()
 
     def _on_module_update(self,data: dict[tuple[int, int], ModuleInfo]) -> None: 
         modules = []

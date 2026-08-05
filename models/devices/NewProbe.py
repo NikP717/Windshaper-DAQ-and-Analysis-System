@@ -2,9 +2,10 @@ import threading
 from windsuite_sdk import WindProbeData
 from models.wind.WindController import WindController
 from models.experiment.ExperimentClock import ExperimentClock
+from models.data.ProbeFeedbackState import ProbeFeedbackState
 
 class NewProbe():
-    def __init__(self,windcontroller_instance: WindController, ID, clock: ExperimentClock):
+    def __init__(self,windcontroller_instance: WindController, ID, clock: ExperimentClock, feedback_state = False):
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
@@ -14,6 +15,7 @@ class NewProbe():
         self.plotter = None
         self.clock = clock
         self.ID = ID
+        self.feedback_state = feedback_state
 
     def _zero_probe(self) -> bool: 
         zero_success = self.windshaper.zero_windprobe()
@@ -52,6 +54,13 @@ class NewProbe():
                 
             if self.plotter:
                 self.plotter.push(row)
+
+            if self.feedback_state:
+                feedback = ProbeFeedbackState()
+                ProbeFeedbackState.windspeed_x = vel.x
+                ProbeFeedbackState.windspeed_y = vel.y
+                ProbeFeedbackState.windspeed_z = vel.z
+                feedback.change_time(self.clock)
             
             with self.buffer_lock:
                 self.current_buffer_data.append(row)

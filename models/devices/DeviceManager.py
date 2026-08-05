@@ -15,11 +15,13 @@ import threading
 class DeviceManager():
     def __init__(self, config: ExperimentConfig):
         # measurement device dict {ID: DeviceType, etc.}
+        # controller probe device list = [] of IDs used for feedback
         self.clock = ExperimentClock()
 
         self.config = config
         self.device_dict = config.measurement_device_dict
-        self.windcontroller = WindController(config.wall, self.clock)
+        self.controller_feedback_list = config.controller_feedback_probe_list
+        self.windcontroller = WindController(self.config, self.clock)
         self._check_device_dict()
 
         self.registered_devices = []
@@ -37,11 +39,11 @@ class DeviceManager():
                 devices.connect_to_probe()
             elif type(devices) == NewProbe:
                 pass # no connection checker
-
+    
     def start_devices(self):
         self.clock.start_clock()
         # Windshaper initialisation (Background process)
-        self.windcontrol_thread = threading.Thread(target=self.windcontroller.run_profile,args=(self.config.profile,))
+        self.windcontrol_thread = threading.Thread(target=self.windcontroller.run_profile,args=())
         self.windcontrol_thread.daemon = True
         # Data Writer initialisation (Background process)
         self.writer_thread = threading.Thread(target=self.data_manager.update_dataset_thread)
@@ -85,7 +87,6 @@ class DeviceManager():
         finally:
             if not self.stop_event.is_set():
                 self.stop_event.set()
-            self.stop_devices()
 
     def stop_devices(self):
         self.windcontroller.stop_control() # stops fans in event of emergency stop trigger
@@ -105,7 +106,10 @@ class DeviceManager():
 
     def _generate_device_instances(self) -> None:
         for ids, devices in self.device_dict.items():
-            new_device = devices(self.windcontroller, ids, self.clock)
+            if ids in self.controller_feedback_list:
+                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
+            else:
+                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
             self.registered_devices.append(new_device)
         self.data_manager = DeviceDataManager(self.windcontroller,self.registered_devices, self.config)
 

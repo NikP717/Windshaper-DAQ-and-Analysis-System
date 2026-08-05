@@ -12,6 +12,7 @@ Configuration Arguments:
         distance_from_wall: Optional[float] = 0
         probe_position: Optional[tuple] #(X,Y) = (0,0) -> not associated with tracking just to do with choice
         repeat: int # marks repeat iteration e.g 1 will be labelled as R1, prevents ovewriting repeats of same configuration
+
     # Profile Management [REQUIRED]
     ====================================================================
         wall: int # [1,2,3] -> Configure between 1 wall, 2nd wall (slave) or 3 (both) - if you modified WindSuite this integer list will be different (in order of list on windsuite)
@@ -66,22 +67,39 @@ repeats = [1]
 positions= [(16,24),(16,16),(16,8)]
 
 if __name__ == "__main__":
-    for r in repeats:
-        for pos in positions:
-            input(f"Move to {pos}, Enter when ready. Remember to replug probe")
-            configuration = ExperimentConfig(
-                pause_time = 0,
-                distance_from_wall = 0.85,
-                probe_position=pos,
-                measurement_device_dict={'probe_01': OldProbe},
-                repeat=r,
-                time_crop=(10,70),
-                wall=2,
-                profile=Profiles.uniform_flow(30,80),
-                live_probe_data=True
-            )
-            ExperimentRunner.run_configuration(configuration)
 
-    # name = "Prelim_Spatial_Test_TEST"
-    # ExperimentRunner.save_configuration_series(name) # OPTIONAL
+    configuration = ExperimentConfig(
+    pause_time = 0,
+    distance_from_wall = 0.85,
+    probe_position=(0,0),
+    measurement_device_dict={'probe_01': OldProbe},
+    controller_feedback_probe_list=['probe_01'],
+    repeat=1,
+    time_crop=(10,70),
+    wall=2,
+    profile=Profiles.velocity_control_uniform_flow(8.3,100),
+    live_probe_data=True,
+    live_windshaper_data=True
+    )
+    ExperimentRunner.run_configuration(configuration)
+# velocity_control_uniform_flow(6,60)
+    # for r in repeats:
+    #     for pos in positions:
+    #         input(f"Move to {pos}, Enter when ready. Remember to replug probe")
+    #         configuration = ExperimentConfig(
+    #             pause_time = 0,
+    #             distance_from_wall = 0.85,
+    #             probe_position=pos,
+    #             measurement_device_dict={'probe_01': OldProbe},
+    #             controller_feedback_probe_list=['probe_01'],
+    #             repeat=r,
+    #             time_crop=(10,70),
+    #             wall=2,
+    #             profile=Profiles.velocity_control_uniform_flow(6,60),
+    #             live_probe_data=True
+    #         )
+    #         ExperimentRunner.run_configuration(configuration)
+
+    name = "control_test_1"
+    ExperimentRunner.save_configuration_series(name) # OPTIONAL
 

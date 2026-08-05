@@ -5,9 +5,10 @@ import math
 from models.wind.WindController import WindController
 from models.windprobe_api import NucleoProbeTransceiver, ProbeRawData
 from models.experiment.ExperimentClock import ExperimentClock
+from models.data.ProbeFeedbackState import ProbeFeedbackState
 
 class OldProbe():
-    def __init__(self,windshaper_instance: WindController, ID, clock: ExperimentClock):
+    def __init__(self,windshaper_instance: WindController, ID, clock: ExperimentClock, feedback_state = False):
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
@@ -18,11 +19,12 @@ class OldProbe():
         self.transceiver = NucleoProbeTransceiver(probe_ready=self.probe_ready,probe_error=self.probe_error,callback_new_probe_data=self._on_new_probe_data)
         self.clock = clock
         self.ID = ID
-        self.zeroed_data = [0,0,0,0,0]
 
         # connection notification manager stored
         self.failed_connect_notif = False
-        self.manual_zero_status = True
+
+        # controller feedback 
+        self.feedback_state = feedback_state
 
     def connect_to_probe(self) -> bool:  # BLOCKING FUNCTION, MAIN THREAD WILL NOT RUN UNTIL THIS OCCURS
         # Scan USB for the probe until found
@@ -49,31 +51,29 @@ class OldProbe():
         vel = raw_probe_data.windspeed_vels_mps
         time_elapsed = self.clock.time_elapsed
         windshape_parameters = self.windshaper.array_state
+
         row =  [
                 time_elapsed,
-                (vel.x - self.zeroed_data[1]),
-                (vel.y - self.zeroed_data[2]),
-                (vel.z - self.zeroed_data[3]),
+                (vel.x),
+                (vel.y),
+                (vel.z),
                 (raw_probe_data.static_pressure_pascal),
                 (raw_probe_data.temperature_celcius),
                 (raw_probe_data.atmospheric_pressure_hpascal),
                 *windshape_parameters.array_probe_snapshot_upstream,
                 *windshape_parameters.array_probe_snapshot_downstream
             ]
-        
-        if not self.manual_zero_status:
-            self.zeroed_data = row[:4]
-            self.manual_zero_status = True
-
-            i = 0
-            for vals in self.zeroed_data:
-                new_val = 0 if math.isnan(vals) else vals
-                self.zeroed_data[i] = new_val
-                i += 1
             
         if self.plotter:
             self.plotter.push(row)
-        
+            
+        if self.feedback_state:
+            feedback = ProbeFeedbackState()
+            ProbeFeedbackState.windspeed_x = vel.x
+            ProbeFeedbackState.windspeed_y = vel.y
+            ProbeFeedbackState.windspeed_z = vel.z
+            feedback.change_time(self.clock)
+
         with self.buffer_lock:
             self.current_buffer_data.append(row)
 
@@ -102,3 +102,15 @@ class OldProbe():
         if self.plotter:
             self.plotter.close()
        
+    # def start_device_calibration(self):
+    #     for devices in self.registered_devices:
+    #         if devices.feedback_state:
+    #             self.clock.start_calibration_timer()
+    #             devices.calibration_feedback_start()
+    #             break
+
+    # def stop_device_calibration(self):
+    #     for devices in self.registered_devices:
+    #         if devices.feedback_state:
+    #             devices.calibration_feedback_stop()
+    #             break

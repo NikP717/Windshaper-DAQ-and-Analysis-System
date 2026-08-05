@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Callable
 
-
+# TODO: NEED TO MAKE THIS PROTECTIVE
 @dataclass
 class ExperimentConfig:
     # Experiment naming parameters
@@ -16,6 +16,9 @@ class ExperimentConfig:
     # Equipment Management
     measurement_device_dict: dict # e.g {OldProbe: probe_1, OldProbe: probe_2, NewProbe: probe_3}, formatting follows: {device_type: custom_id} for unlimited .models probe devices added to this script.
 
+    # Closed Loop Control Management
+    controller_feedback_probe_list: Optional[list] = None
+
     # Experiment Meta Data Override
     manual_meta_data: Optional[dict] = None # e.g {'distance': 10, 'frequency': 5}
 
@@ -23,7 +26,7 @@ class ExperimentConfig:
     probe_tracking: Optional[bool] = False # does not support multiple probes atm and only old probe
 
     # Optional Pause time between experiments 
-    pause_time: Optional[float] = None 
+    pause_time: Optional[float] = 0
 
     # Data modification Setting
     time_crop: Optional[tuple] = None #(start_time,end_time) - for cutting off spool up and down of windshaper
