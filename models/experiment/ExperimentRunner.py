@@ -40,44 +40,8 @@ class ExperimentRunner:
         print("---")
         runner = cls(config)
         runner._run()
-        
 
-    def _check_configuration(self) -> None:
-        # time crop protection
-        timeframe = self.config.time_crop
-        if timeframe:
-            init_time = timeframe[0]if (timeframe and len(timeframe) > 0) else None
-            final_time = timeframe[1] if (timeframe and len(timeframe) > 1) else None
-            try:
-                init_time = float(init_time)
-                final_time = float(final_time)
-            except TypeError:
-                raise TypeError("Invalid formatting for initial time and final time in time cropping, ensure they are float or integers.")
-
-            if not init_time:
-                init_time = 0
-            if not final_time:
-                final_time = float('inf')
-
-            if init_time > final_time:
-                raise ValueError(f"[CONFIG ERROR] Start time is greater than end time for the time crop tuple. Expected to be (init_time, final_time).")
-            
-            if final_time - init_time < 20:
-                print("[CONFIG WARNING] Time cropping will be less than 20 seconds, potential for inaccuracy when averaging.")
-
-        # pause time protection
-        try:
-            pause_time = float(self.config.pause_time)
-        except TypeError:
-            raise TypeError("[CONFIG WARNING] Pause time must be an integer or float.")
-        if pause_time < 0:
-            raise ValueError("[CONFIG WARNING] Cannot have a negative pause time.")
-
-    def _run(self) -> None:
-        self._check_configuration()
-        self.device_manager.check_device_connections()
-
-        # optional tracking
+    def _start_tracking_system(self) -> None:
         if self.tracker:
             tracking_thread = threading.Thread(target=self.tracker.start)
             tracking_thread.daemon = True
@@ -97,6 +61,12 @@ class ExperimentRunner:
                     tracking_thread.join(timeout=3)
                     time.sleep(2)  
                 time.sleep(.1)
+
+    def _run(self) -> None:
+        self.config.verify_config()
+        self.device_manager.check_device_connections()
+        # optional tracking
+        self._start_tracking_system()
 
         self.device_manager.start_devices() # handles running of devices and windshaper too 
         self.device_manager.save_data() # saves data once devices are finished

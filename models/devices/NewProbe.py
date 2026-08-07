@@ -5,7 +5,7 @@ from models.experiment.ExperimentClock import ExperimentClock
 from models.data.ProbeFeedbackState import ProbeFeedbackState
 
 class NewProbe():
-    def __init__(self,windcontroller_instance: WindController, ID, clock: ExperimentClock, feedback_state = False):
+    def __init__(self,windcontroller_instance: WindController, ID, clock: ExperimentClock, feedback_state: bool = False) -> None:
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
@@ -13,6 +13,7 @@ class NewProbe():
         self.buffer_lock = threading.Lock()
         self.windshaper = windcontroller_instance.windwrapper
         self.plotter = None
+        self.plot_fq_limiter = 0
         self.clock = clock
         self.ID = ID
         self.feedback_state = feedback_state
@@ -30,7 +31,7 @@ class NewProbe():
         self._zero_probe()
         self.windshaper.register_windprobe_callback(callback=self._on_new_probe_data)
         
-    def stop(self):
+    def stop(self) -> None:
         self.stop_event.set()
 
         if self.plotter:
@@ -52,8 +53,10 @@ class NewProbe():
                     *windshape_parameters.array_probe_snapshot_downstream
                 ]
                 
-            if self.plotter:
+            self.plot_fq_limiter += 1
+            if self.plotter and self.plot_fq_limiter % 4 == 0:
                 self.plotter.push(row)
+                self.plot_fq_limiter = 0
 
             if self.feedback_state:
                 feedback = ProbeFeedbackState()

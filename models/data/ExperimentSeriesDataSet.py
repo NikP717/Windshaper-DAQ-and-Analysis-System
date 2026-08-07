@@ -5,8 +5,10 @@ import pickle
 from models.data.DataColumns import DataColumns
 from models.data.WindDataset import WindDataset
 
+from typing import Self
+
 class ExperimentSeriesDataSet:
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         project_dir = Path(__file__).resolve().parent.parent.parent
         reference_meta_file = next((project_dir / "WINDDATA").glob("*.pkl"))
         meta_data_cols = WindDataset.load(reference_meta_file).meta_data.columns.tolist() # takes a WINDDATA file metadata, important for all winddata files to have identical metadata
@@ -35,7 +37,7 @@ class ExperimentSeriesDataSet:
         listed_vars.extend(data_row)
         self._rows.append(listed_vars)
 
-    def input_winddata(self):
+    def input_winddata(self) -> None:
         project_dir = Path(__file__).resolve().parent.parent.parent
         data_dir = project_dir / "WINDDATA"
 
@@ -47,7 +49,7 @@ class ExperimentSeriesDataSet:
                   self.processed_files.append(new_path)
                   self.processed_files.append(path)
 
-    def save(self, remove_raw_data = False):
+    def save(self, remove_raw_data: bool = False) -> None:
         # WINDANALYSIS
         # > EXPERIMENT NAME (FOLDER)
         # > > EXCEL SHEET OF OVERALL DATA SET
@@ -74,13 +76,13 @@ class ExperimentSeriesDataSet:
         self._save_obj(output_dir)
         self._save_to_xl(output_dir)
 
-    def _save_obj(self, output_dir):
+    def _save_obj(self, output_dir: Path) -> None:
         """Saves object class as a pickle instance"""
         output = output_dir / self.name
         with open(f"{output}.pkl","wb") as file:
             pickle.dump(self, file)
              
-    def _save_to_xl(self, output_dir):
+    def _save_to_xl(self, output_dir: Path) -> None:
         """"
         Creates an excel representation for data, does not include listed variables due to excel parsing large quantities of text.
         Load from excel makes listed variables hard to use, recommend using load function instead""" 
@@ -92,13 +94,13 @@ class ExperimentSeriesDataSet:
             df_no_lists.to_excel(writer, sheet_name="overall_data", index=False)
 
     @classmethod
-    def load(cls,path):
+    def load(cls,path: Path) -> Self:
         """Loads complete dataset object"""
         with open(path, "rb") as file:
             loaded_object = pickle.load(file)
             return loaded_object
     @classmethod
-    def load_from_xl(cls,path):
+    def load_from_xl(cls,path: Path) -> Self:
         """[!] Creates data set object which does not include listed variables e.g time elpased, velocity elapsed etc."""
         filename = Path(path).stem
         new_data_obj = cls(name=filename)

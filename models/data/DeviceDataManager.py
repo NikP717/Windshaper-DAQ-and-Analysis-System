@@ -4,7 +4,7 @@ from models.data.WindDataset import WindDataset
 from models.experiment.ExperimentConfig import ExperimentConfig
 
 class DeviceDataManager():
-    def __init__(self,windcontroller_instance,registered_devices_list: list, config: ExperimentConfig):
+    def __init__(self,windcontroller_instance,registered_devices_list: list, config: ExperimentConfig) -> None:
         self.registered_devices_list = registered_devices_list
         self.windcontroller = windcontroller_instance
         self.windshaper = windcontroller_instance.windwrapper
@@ -13,11 +13,11 @@ class DeviceDataManager():
         self._create_winddata()
         self.stop_event = threading.Event()
 
-    def _create_winddata(self):
+    def _create_winddata(self) -> None:
         for devices in self.registered_devices_list:
             self.data_instance_dict[devices] = WindDataset(self.config.manual_meta_data)
 
-    def set_metadata(self):
+    def set_metadata(self) -> None:
         for device, data in self.data_instance_dict.items():
             if not self.config.manual_meta_data:
                 array_state = self.windshaper.array_state
@@ -46,7 +46,7 @@ class DeviceDataManager():
                             data.store_buffered_probe_data(current_buffered_data)
                 time.sleep(.1) # limit upload data speed compared to sampling frequency of probe 200Hz to not contest buffer lock excessively
 
-    def save_data(self):
+    def save_data(self) -> None:
         for device, data in self.data_instance_dict.items():
             data.crop_data_time(self.config.time_crop)
             data.save_obj()

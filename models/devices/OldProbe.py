@@ -8,7 +8,7 @@ from models.experiment.ExperimentClock import ExperimentClock
 from models.data.ProbeFeedbackState import ProbeFeedbackState
 
 class OldProbe():
-    def __init__(self,windshaper_instance: WindController, ID, clock: ExperimentClock, feedback_state = False):
+    def __init__(self,windshaper_instance: WindController, ID, clock: ExperimentClock, feedback_state: bool = False) -> None:
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
@@ -16,6 +16,7 @@ class OldProbe():
         self.buffer_lock = threading.Lock()
         self.windshaper = windshaper_instance.windwrapper
         self.plotter = None
+        self.plot_fq_limiter = 0
         self.transceiver = NucleoProbeTransceiver(probe_ready=self.probe_ready,probe_error=self.probe_error,callback_new_probe_data=self._on_new_probe_data)
         self.clock = clock
         self.ID = ID
@@ -63,9 +64,13 @@ class OldProbe():
                 *windshape_parameters.array_probe_snapshot_upstream,
                 *windshape_parameters.array_probe_snapshot_downstream
             ]
-            
-        if self.plotter:
+        
+        self.plot_fq_limiter += 1
+        if self.plotter and self.plot_fq_limiter % 4 == 0:
             self.plotter.push(row)
+            self.plot_fq_limiter = 0
+
+
             
         if self.feedback_state:
             feedback = ProbeFeedbackState()
@@ -77,7 +82,7 @@ class OldProbe():
         with self.buffer_lock:
             self.current_buffer_data.append(row)
 
-    def _monitor_errors(self):
+    def _monitor_errors(self) -> None:
         while not self.stop_event.is_set():
             if self.probe_error.is_set():
                 print("[OLDWINDPROBE] Error detected during measurement.")
@@ -94,23 +99,10 @@ class OldProbe():
         self.manual_zero_status = False
         return True
     
-    def stop(self):
+    def stop(self) -> None:
         self.stop_event.set()
         self.transceiver.serial_port.close()
         if hasattr(self, "error_thread"):
             self.error_thread.join()
         if self.plotter:
             self.plotter.close()
-       
-    # def start_device_calibration(self):
-    #     for devices in self.registered_devices:
-    #         if devices.feedback_state:
-    #             self.clock.start_calibration_timer()
-    #             devices.calibration_feedback_start()
-    #             break
-
-    # def stop_device_calibration(self):
-    #     for devices in self.registered_devices:
-    #         if devices.feedback_state:
-    #             devices.calibration_feedback_stop()
-    #             break

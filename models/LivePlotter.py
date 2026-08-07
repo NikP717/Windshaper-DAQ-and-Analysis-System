@@ -7,7 +7,7 @@ from pyqtgraph.Qt import QtWidgets, QtCore
 
 
 class LivePlotter:
-    def __init__(self, probe_instance_ID, probe_plot=False, wind_plot=False, fan_shape = None | tuple,  max_points=100000):
+    def __init__(self, probe_instance_ID: str, probe_plot=False, wind_plot=False, fan_shape = None | tuple,  max_points=100000) -> None:
 
         self.max_points = max_points
         self.q = mp.Queue(maxsize=10000)
@@ -24,19 +24,19 @@ class LivePlotter:
 
         self.proc.start()
 
-    def push(self, row):
+    def push(self, row: list) -> None:
         """Non-blocking."""
         try:
             self.q.put_nowait(row)
         except:
             pass
 
-    def close(self):
+    def close(self) -> None:
         if self.proc.is_alive():
             self.proc.terminate()
             self.proc.join(timeout=2)
 
-    def _gui_process(self, q, max_points):
+    def _gui_process(self, q, max_points) -> None:
 
         app = QtWidgets.QApplication([])
 
@@ -144,7 +144,7 @@ class LivePlotter:
 
         timer = QtCore.QTimer()
 
-        def update():
+        def update() -> None:
             if self.wind_plot:
                 nonlocal downstream_rpm, upstream_rpm
 

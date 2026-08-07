@@ -11,7 +11,7 @@ class FanSelection:
     layer: Optional[str] = None
     parity: Optional[str] = None
 
-    def _determine_fan_rows(self):
+    def _determine_fan_rows(self) -> tuple[float, float]:
         fans = []
         module_rows =[]
         for rows in self.fan_rows:
@@ -25,7 +25,7 @@ class FanSelection:
             module_rows.append(module_row)
         return fans, module_rows
 
-    def _determine_fan_columns(self):
+    def _determine_fan_columns(self) -> None:
         fans =[]
         module_cols = []
         for cols in self.fan_columns:
@@ -35,7 +35,7 @@ class FanSelection:
             module_cols.append(module_col)
         return fans, module_cols
         
-    def apply(self, fan_controller):
+    def apply(self, fan_controller) -> None:
         controller = fan_controller
 
         if self.module_rows:

@@ -6,10 +6,11 @@ from statsmodels.tsa.stattools import adfuller
 from datetime import datetime
 import pickle
 
+from typing import Self
 from models.data.DataColumns import DataColumns
 
 class WindDataset:
-    def __init__(self, manual_meta = False):
+    def __init__(self, manual_meta: bool = False) -> None:
         self.probe_columns = DataColumns.PROBE_COLUMNS
         self.meta_columns = DataColumns.META_COLUMNS
         self.summary_columns = DataColumns.SUMMARY_COLUMNS
@@ -32,10 +33,10 @@ class WindDataset:
         self.max_lag_seconds = 10
         self.convection_speed = None
     
-    def set_meta_data(self,meta_data_row):
+    def set_meta_data(self,meta_data_row: list) -> None:
         self.meta_data.loc[len(self.meta_data)] = meta_data_row
     
-    def store_buffered_probe_data(self,buffer_data):
+    def store_buffered_probe_data(self,buffer_data: list):
         new_rows = pd.DataFrame(buffer_data, columns=self.probe_data.columns)
         # fix any errors in data
         for col in ["windspeed_x", "windspeed_y", "windspeed_z"]:
@@ -55,7 +56,7 @@ class WindDataset:
         cropped_probe_data = df[(df['time_s'] >= init_time) & (df['time_s'] <= final_time)]
         self.probe_data = cropped_probe_data
 
-    def _generate_summary_data(self):
+    def _generate_summary_data(self) -> None:
         # 4 sub functions below modified from Reda Snaiki 3D Analysis Code.
         self.summary_data_x = self.summary_data_x.iloc[0:0]
         self.summary_data_y = self.summary_data_y.iloc[0:0]
@@ -111,7 +112,7 @@ class WindDataset:
             row_values.extend(self.summary_data_3d.iloc[-1].tolist())
         return row_values
 
-    def save_obj(self):
+    def save_obj(self) -> None:
         """Saves object class as a pickle instance"""
         project_dir = Path(__file__).resolve().parent.parent.parent
         metadata_values = self.meta_data.iloc[0]
@@ -126,13 +127,13 @@ class WindDataset:
             pickle.dump(self, file)
 
     @classmethod
-    def load(cls,path):
+    def load(cls,path: Path) -> Self:
         """Loads complete dataset object"""
         with open(path, "rb") as file:
             loaded_object = pickle.load(file)
             return loaded_object
 
-    def save_to_xl(self): # DEFAULT PATH IS TO WINDDATA
+    def save_to_xl(self) -> Path: # DEFAULT PATH IS TO WINDDATA
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDDATA" 
         metadata_values = self.meta_data.iloc[0]
@@ -154,7 +155,7 @@ class WindDataset:
         return output
 
     @classmethod
-    def load_from_xl(cls, path): # NO DEFAULT PATH
+    def load_from_xl(cls, path: Path) -> Self: # NO DEFAULT PATH
         new_data_obj = cls()
         excel_data = pd.read_excel(path, sheet_name=None)
         new_data_obj.meta_data = excel_data.get("meta_data")
@@ -166,7 +167,7 @@ class WindDataset:
         return new_data_obj
     
     # REDA SNAIKI FUNCTIONS FOR ANALYSIS BELOW SLIGHTLY MODIFIED FOR CLASS FUNCTION
-    def _get_sampling_frequency(self, time):
+    def _get_sampling_frequency(self, time: np.ndarray) -> float:
         dt = np.median(np.diff(time))
         if not np.isfinite(dt) or dt <= 0:
             return 0
@@ -174,7 +175,7 @@ class WindDataset:
         print(f"[WINDDATA] Achieved Sampling Frequency: {fs_hz:.2f}Hz, Probe ID: {self.meta_data['probe_id'].iloc[0]}")
         return fs_hz
     
-    def _basic_component_statistics(self, ux, uy, uz):
+    def _basic_component_statistics(self, ux, uy, uz) -> tuple[float, ...]:
         """
         Calculate means, fluctuations, standard deviations, and turbulence intensities.
         """
@@ -210,7 +211,7 @@ class WindDataset:
         "TIx": TIx, "TIy": TIy, "TIz": TIz, "TI3D": TI3D
         }
     
-    def _stationarity_check(self,velocity_signal, fs_hz):
+    def _stationarity_check(self,velocity_signal: np.ndarray, fs_hz: float) -> tuple[float, ...]:
         """
         Rolling mean and rolling standard deviation, plus optional ADF test.
         """

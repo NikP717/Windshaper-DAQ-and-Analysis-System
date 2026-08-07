@@ -30,7 +30,7 @@ class WindAnalyser:
         return dataset_obj.data_set
 
     @staticmethod
-    def _mean_mixed(series): # for column averaging
+    def _mean_mixed(series) -> float: # for column averaging
         first_val = series.iloc[0]
         #  list inside the cell (for listed vars)
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
@@ -42,7 +42,7 @@ class WindAnalyser:
         return float(np.mean(series))
 
     @staticmethod
-    def _std_mixed(series): # for creating standard deivation columns
+    def _std_mixed(series) -> float: # for creating standard deivation columns
         first_val = series.iloc[0]
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
             arrays = [np.asarray(v, dtype=float) for v in series]
@@ -52,7 +52,7 @@ class WindAnalyser:
         return float(np.std(series))
     
     @staticmethod
-    def _mean_circular(series):
+    def _mean_circular(series) -> float:
         """Calculates circular mean wrapped via 180."""
         series = np.asarray(series.dropna(), dtype=float)
         if series.size == 0:
@@ -64,7 +64,7 @@ class WindAnalyser:
         return np.rad2deg(np.arctan2(sin_mean, cos_mean))
 
     @staticmethod
-    def _std_circular(series):
+    def _std_circular(series) -> float:
         """Calculates circular standard deviation in degrees."""
         cleaned = np.asarray(series.dropna(), dtype=float)
         if cleaned.size == 0 or len(cleaned) == 1:
@@ -87,7 +87,7 @@ class WindAnalyser:
         return np.rad2deg(circ_std_rad)
 
     @classmethod
-    def average_dataset(cls,dataset,wrapped_angle_cols=None,groupby=None):
+    def average_dataset(cls,dataset: pd.DataFrame,wrapped_angle_cols=None,groupby=None) -> pd.DataFrame:
         """From each experiment repeat group converts it to one result mean with a standard deviation for error analysis:
         e.g Repeat 1,2,3 collapsed into 1 datapoint into a mean and standard deviation as an additional column for each variable"""
         if groupby:
@@ -120,7 +120,7 @@ class WindAnalyser:
         return mean_data_frame
     
     @classmethod
-    def seperate_dataset_outliers(cls,mean_dataset,dataset,groups_to_check):
+    def seperate_dataset_outliers(cls,mean_dataset,dataset,groups_to_check) -> tuple[pd.DataFrame, ...]:
         global_outlier_mask = pd.Series(False, index=dataset.index)
         for col in groups_to_check:
             repeats = dataset['repeat'].max()
@@ -147,11 +147,6 @@ class WindAnalyser:
     @staticmethod
     def show_dataset_columns(dataset: pd.DataFrame) -> None:
         print(", ".join(dataset.columns.astype(str)))
-
-    @staticmethod
-    def pandas_list_to_list(pd_list) -> list:
-        return list(pd_list[0])
-
     
     @staticmethod
     def show_dataset_summary(dataset: pd.DataFrame) -> None:

@@ -1,5 +1,6 @@
 from models.devices.NewProbe import NewProbe
 from models.devices.OldProbe import OldProbe
+from models.devices.SimProbe import SimProbe
 from models.wind.WindController import WindController
 from models.data.DeviceDataManager import DeviceDataManager
 from models.experiment.ExperimentConfig import ExperimentConfig
@@ -7,13 +8,11 @@ from models.LivePlotter import LivePlotter
 from models.experiment.ExperimentClock import ExperimentClock
 from models.wind.WindState import ArrayState
 import models
-
-import time
 import threading
 
 # MAIN THREAD OPERATION
 class DeviceManager():
-    def __init__(self, config: ExperimentConfig):
+    def __init__(self, config: ExperimentConfig) -> None:
         # measurement device dict {ID: DeviceType, etc.}
         # controller probe device list = [] of IDs used for feedback
         self.clock = ExperimentClock()
@@ -33,14 +32,14 @@ class DeviceManager():
 
         self.stop_event = threading.Event()
         
-    def check_device_connections(self): # for those devices which have it, windcontroller already does it upon initialisation
+    def check_device_connections(self) -> None: # for those devices which have it, windcontroller already does it upon initialisation
         for devices in self.registered_devices:
-            if type(devices) == OldProbe:
+            if type(devices) == OldProbe or type(devices) == SimProbe:
                 devices.connect_to_probe()
             elif type(devices) == NewProbe:
                 pass # no connection checker
     
-    def start_devices(self):
+    def start_devices(self) -> None:
         self.clock.start_clock()
         # Windshaper initialisation (Background process)
         self.windcontrol_thread = threading.Thread(target=self.windcontroller.run_profile,args=())
@@ -66,29 +65,30 @@ class DeviceManager():
         # Reading Loop
         self.run_devices()
 
-    def run_devices(self):
+    def run_devices(self) -> None:
         try:
             while not self.stop_event.is_set():
                 for devices in self.registered_devices:
                     if type(devices) == OldProbe:
                         if devices.probe_error.is_set() or devices.stop_event.is_set():
                             break
-                        devices.transceiver.reading_routine()
-                    elif type(devices) == NewProbe:
-                        pass # No special process required during loop for new probe.
+                        devices.transceiver.reading_routine() # only old probe has a transceiver system
 
                 if not self.windcontrol_thread.is_alive():
                     print("[WINDSHAPER] WindShaper thread completed its profile. Terminating script...")
                     self.stop_event.set()
+                self.stop_event.wait(0.001)
 
         except KeyboardInterrupt:
             print("Forcing Shutdown...")
+            self.stop_event.set()
+            self.windcontroller.stop_control()
 
         finally:
             if not self.stop_event.is_set():
                 self.stop_event.set()
 
-    def stop_devices(self):
+    def stop_devices(self) -> None:
         self.windcontroller.stop_control() # stops fans in event of emergency stop trigger
         for devices in self.registered_devices:
             devices.stop()
@@ -96,20 +96,21 @@ class DeviceManager():
         self.windcontrol_thread.join(timeout=1)
         self.windcontroller.end_control()
 
-    def save_data(self):
+    def save_data(self) -> None:
         self.data_manager.save_data()
 
     def _check_device_dict(self) -> None:
         for ids, devices in self.device_dict.items():
-            if devices not in (models.devices.OldProbe.OldProbe, models.devices.NewProbe.NewProbe):
+            if devices not in (models.devices.OldProbe.OldProbe, models.devices.NewProbe.NewProbe, models.devices.SimProbe.SimProbe):
                 raise TypeError(f"[DEVICEMANAGER] Invalid Device detected: {devices}, ID: {ids}")
 
     def _generate_device_instances(self) -> None:
         for ids, devices in self.device_dict.items():
-            if ids in self.controller_feedback_list:
-                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
+            if self.controller_feedback_list is not None:
+                if ids in self.controller_feedback_list:
+                    new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
             else:
-                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
+                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=False)
             self.registered_devices.append(new_device)
         self.data_manager = DeviceDataManager(self.windcontroller,self.registered_devices, self.config)
 

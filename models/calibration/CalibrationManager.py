@@ -1,4 +1,5 @@
 from models.calibration.VelocityCalibration import VelocityCalibration
+from models.experiment.ExperimentConfig import ExperimentConfig
 
 from pathlib import Path
 import json
@@ -6,12 +7,12 @@ from datetime import datetime
 import time
 
 class CalibrationManager():
-    def __init__(self, config):
+    def __init__(self, config: ExperimentConfig) -> None:
         self.config = config
         self.calibrate_type = VelocityCalibration(self.config)
         self.calibration_data = None
 
-    def determine_calibration(self):
+    def determine_calibration(self) -> None:
         print("[CALBIRATION] Velocity input detected, checking existing calibrations...")
         self._check_existing_calibrations()
         if not self.calibration_data:
@@ -19,7 +20,7 @@ class CalibrationManager():
             time.sleep(2)
             self._create_new_calibration()
 
-    def get_feed_pwm(self, target, velocity_component):
+    def get_feed_pwm(self, target: float, velocity_component: str) -> float:
         if velocity_component == "vz":
             return target / self.calibration_data['vz_gain']
         if velocity_component == "vy":
@@ -27,7 +28,7 @@ class CalibrationManager():
         if velocity_component == "vx":
             return target / self.calibration_data['vx_gain']
         
-    def _check_existing_calibrations(self):
+    def _check_existing_calibrations(self) -> None:
         project_dir = Path(__file__).resolve().parent.parent.parent
         dir = project_dir / "models" / "data" / "CALDATA"
         for file in dir.iterdir():
@@ -42,17 +43,17 @@ class CalibrationManager():
                 if condition_1 and condition_2 and condition_3:
                     self._load_calibration(loaded_data)
 
-    def _create_new_calibration(self):
+    def _create_new_calibration(self) -> None:
         self.calibrate_type.run()
         self._save_calibration()
 
-    def _generate_save_metadata(self):
+    def _generate_save_metadata(self) -> None:
         metadata = {"wall":self.config.wall,
                     "distance_from_wall":self.config.distance_from_wall,
                     "probe_position":self.config.probe_position}
         return metadata
 
-    def _save_calibration(self):
+    def _save_calibration(self) -> None:
         project_dir = Path(__file__).resolve().parent.parent.parent
         dir = project_dir / "models" / "data" / "CALDATA" 
         dir.mkdir(exist_ok=True)
@@ -66,5 +67,5 @@ class CalibrationManager():
             json.dump(data, file, indent=4)
 
 
-    def _load_calibration(self, data):
+    def _load_calibration(self, data: dict) -> None:
         self.calibration_data = data

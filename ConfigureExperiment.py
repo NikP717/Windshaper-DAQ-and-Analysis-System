@@ -2,6 +2,7 @@ from models.experiment.ExperimentConfig import ExperimentConfig
 from models.experiment.ExperimentRunner import ExperimentRunner
 from models.devices.OldProbe import OldProbe
 from models.devices.NewProbe import NewProbe
+from models.devices.SimProbe import SimProbe
 import Profiles
 import time
 
@@ -48,39 +49,40 @@ Configuration Arguments:
 """
 
 #%% LOOP THROUGH CONFIGURATIONS HERE
-# configuration = ExperimentConfig(
-#             pause_time=0,
-#             distance_from_wall=0.85,
-#             probe_position= (0,0),
-#             repeat=1,
-#             time_crop = (20,180), # OPTIONAL
-#             wall=4,
-#             profile=Profiles.uniform_flow(30,120),
-#             manual_meta_data=None,
-#             measurement_device_dict={'probe_1':OldProbe},
-#             probe_tracking = False, 
-#             live_probe_data = True,
-#             live_windshaper_data = True
-#         )
+configuration = ExperimentConfig(
+            pause_time=0,
+            distance_from_wall=0.85,
+            probe_position= (0,0),
+            repeat=1,
+            time_crop = (20,180), # OPTIONAL
+            wall=4,
+            profile=Profiles.velocity_control_uniform_flow(8,5,60),
+            controller_feedback_probe_list=['probe_1'],
+            manual_meta_data=None,
+            measurement_device_dict={'probe_1':SimProbe},
+            probe_tracking = False, 
+            live_probe_data = True,
+            live_windshaper_data = True
+        )
 
-repeats = [1]
-positions= [(16,24),(16,16),(16,8)]
+velocity = [2.5, 3.4, 7.9, 8.6, 10.3]
 
 if __name__ == "__main__":
-
-    configuration = ExperimentConfig(
-    pause_time = 0,
-    distance_from_wall = 0.85,
-    probe_position=(0,0),
-    measurement_device_dict={'probe_01': OldProbe},
-    controller_feedback_probe_list=['probe_01'],
-    repeat=1,
-    time_crop=(10,70),
-    wall=2,
-    profile=Profiles.velocity_control_uniform_flow(8.3,100),
-    live_probe_data=True,
-    live_windshaper_data=True
-    )
+    # for v in velocity:
+    #     configuration = ExperimentConfig(
+    #     pause_time = 0,
+    #     distance_from_wall = 0.85,
+    #     probe_position=(0,0),
+    #     measurement_device_dict={'probe_01': SimProbe},
+    #     controller_feedback_probe_list=['probe_01'],
+    #     repeat=1,
+    #     time_crop=(15,60),
+    #     manual_meta_data={"applied velocity": v},
+    #     wall=2,
+    #     profile=Profiles.velocity_control_uniform_flow(v,60),
+    #     live_probe_data=True,
+    #     live_windshaper_data=True
+    #     )
     ExperimentRunner.run_configuration(configuration)
 # velocity_control_uniform_flow(6,60)
     # for r in repeats:
@@ -100,6 +102,8 @@ if __name__ == "__main__":
     #         )
     #         ExperimentRunner.run_configuration(configuration)
 
-    name = "control_test_1"
-    ExperimentRunner.save_configuration_series(name) # OPTIONAL
+    # name = "control_test_1"
+    # ExperimentRunner.save_configuration_series(name) # OPTIONAL
 
+
+# %%

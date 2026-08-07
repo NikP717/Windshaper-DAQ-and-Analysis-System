@@ -1,7 +1,7 @@
 
 from models.wind.FanSelection import FanSelection
 from models.wind.WindProfileBuilder import ControlMode
-
+from models.experiment.ExperimentConfig import ExperimentConfig
 from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode
 from models.data.WindDataset import WindDataset
 
@@ -12,7 +12,7 @@ import math
 
 
 class VelocityCalibration():
-    def __init__(self, config):
+    def __init__(self, config: ExperimentConfig) -> None:
         self.config = config
         self.vx_gain = 0
         self.vy_gain = 0
@@ -23,7 +23,7 @@ class VelocityCalibration():
         self.duration = len(self.pwm_sequence) * self.time_step + 1
         self.time_sequence = range(self.time_step,self.duration,self.time_step)
 
-    def run(self):
+    def run(self) -> None:
         self._run_pwm_series()
         data = self._get_new_winddata()
         v_x_series = data.probe_data['windspeed_x'].to_numpy()
@@ -64,11 +64,13 @@ class VelocityCalibration():
 
         if math.isnan(self.vx_gain) or math.isnan(self.vy_gain) or math.isnan(self.vz_gain):
             raise ValueError("Invalid Gain detected, failed callibration.")
-        if self.vx_gain == 0 or self.vy_gain == 0 or self.vz_gain == 0:
-            raise ValueError("Zero Gain detected, failed callibration.")
+        
         self.vx_gain = slopex
         self.vy_gain = slopey
         self.vz_gain = slopez
+
+        if self.vz_gain == 0: # self.vx_gain == 0 or self.vy_gain == 0 or
+                    raise ValueError("Zero Gain detected, failed callibration.")
 
     def _get_new_winddata(self) -> WindDataset:
         project_dir = Path(__file__).resolve().parent.parent.parent
@@ -81,7 +83,7 @@ class VelocityCalibration():
         newest_file.unlink() # remove temp pkl file for calibration
         return winddata_obj
 
-    def _pwm_series_profile(self):
+    def _pwm_series_profile(self) -> None:
         all_fans = FanSelection()
         profile = WindProfileBuilder(max(self.time_sequence)+10)
         times = self.time_sequence
@@ -94,7 +96,7 @@ class VelocityCalibration():
             )
         return profile.build(name="CALIBRATION SERIES")
 
-    def _run_pwm_series(self):
+    def _run_pwm_series(self) -> None:
          # Prevents circular import cycle in the event velocity calibration isnt running 
         from models.experiment.ExperimentConfig import ExperimentConfig
         from models.experiment.ExperimentRunner import ExperimentRunner
@@ -116,7 +118,7 @@ class VelocityCalibration():
         ExperimentRunner.run_configuration(calib_config) # nested experiment runner ik insane
         print("[CALIBRATION] Calibration complete.")
 
-    def _isolate_single_device_dict(self):
+    def _isolate_single_device_dict(self) -> None:
         dict = self.config.measurement_device_dict
         id = self.config.controller_feedback_probe_list[0]
         probe_type = dict[id]

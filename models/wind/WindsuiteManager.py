@@ -5,13 +5,14 @@ import math
 
 from models.wind.WindState import FanState, ModuleState, ArrayState
 from models.wind.FanSelection import FanSelection
-from models.wind.WindProfileBuilder import ControlMode
+from models.wind.WindProfileBuilder import ControlMode, FanInstruction
 from itertools import zip_longest
 
 class WindsuiteManager():
-    def __init__(self, fan_wall_selection) -> None:
+    def __init__(self, fan_wall_selection: int) -> None:
         self.sdk_instance = None
         self.fan_controller = None
+        self.PWM_SAFETY_LIMIT = 65
 
         self.fan_wall_selection = fan_wall_selection
 
@@ -70,7 +71,7 @@ class WindsuiteManager():
         self.sdk_instance.set_psu(False)
         print("[WINDCONTROL] Shut down.")
 
-    def switch_layout(self, new_layout):
+    def switch_layout(self, new_layout) -> None:
         if new_layout in self.layouts.names:
             self.sdk_instance.layouts.set_layout(new_layout)
         else:
@@ -85,40 +86,43 @@ class WindsuiteManager():
         ArrayState.module_rows = self.sdk_instance.current_layout.nb_rows
         ArrayState.module_columns = self.sdk_instance.current_layout.nb_columns
 
-    def add_instr(self, selection: FanSelection, command, mode_type: str):
-        # command int or wind function as per windsuite sdk requirements
-        if mode_type == ControlMode.PWM or mode_type == "pwm":
-            self.pwm_commands.append([selection,command])
-        elif mode_type == ControlMode.FUNCTION or mode_type == "func":
-            self.functions.append([selection,command])
+    def add_instr(self, selection: FanSelection, command: FanInstruction) -> None:
+        if command.control_mode == ControlMode.PWM:
+            if command.pwm is not None:
+                self.pwm_commands.append([selection,command])
+            elif command.pwm_wind_function is not None:
+                self.functions.append([selection,command])
 
-    def apply_instructions(self):  
-            for pwm, func, in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
-                if pwm is not None:
-                    if math.isnan(pwm[1]): 
+    def apply_instructions(self) -> None:  
+        if not self.stop_status:
+            for pwm_cmd, func_cmd, in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
+
+                if pwm_cmd is not None:
+                    pwm_instr = pwm_cmd[1].pwm
+
+                    if math.isnan(pwm_instr): 
                         self.stop_windshaper()
                         raise ValueError("Invalid PWM")
-                    if pwm[1]> 65:
+                    if pwm_instr > self.PWM_SAFETY_LIMIT:
                         self.stop_windshaper()
                         raise ValueError("PWM Exceeds safety limit.")
-                    selection, instr = pwm
+                    
+                    selection, instr = pwm_cmd
+                    controller_pwm = instr.pwm
                     controller = selection.apply(self.fan_controller)
-                    controller.set_intensity(percent=instr)
+                    controller.set_intensity(percent=controller_pwm)
 
-                    controller = selection.apply(self.fan_controller)
-                    controller.set_intensity(percent=instr)
-
-                if func is not None:
-                    selection_func, instr_func = func
+                if func_cmd is not None:
+                    selection_func, instr_func = func_cmd
+                    controller_func = instr_func.pwm_wind_function
                     controller = selection_func.apply(self.fan_controller)
-                    controller.set_intensity_function(instr_func)
-                
-                    controller = selection_func.apply(self.fan_controller)
-                    controller.set_intensity_function(instr_func)
+                    controller.set_intensity_function(controller_func)
 
                 controller.apply()
             self.pwm_commands.clear()
-
+        else:
+            self.fan_controller.set_intensity(0).apply()
+            
     def _on_module_update(self,data: dict[tuple[int, int], ModuleInfo]) -> None: 
         modules = []
         for (row, col), module_info in data.items():

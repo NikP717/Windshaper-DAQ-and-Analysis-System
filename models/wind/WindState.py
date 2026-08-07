@@ -18,14 +18,14 @@ class ModuleState:
     col: int
     fans: list[FanState]
 
-    def pwm_matrix(self, layer="upstream"):
+    def pwm_matrix(self, layer: str="upstream") -> np.ndarray:
         if layer == "upstream":
             values = [fan.upstream_pwm for fan in self.fans]
         else:
             values = [fan.downstream_pwm for fan in self.fans]
         return np.array(values).reshape(3,3)
 
-    def rpm_matrix(self, layer="upstream"):
+    def rpm_matrix(self, layer: str="upstream") -> np.ndarray:
         if layer == "upstream":
             values = [fan.upstream_rpm for fan in self.fans]
         else:
@@ -72,7 +72,7 @@ class ArrayState:
         return np.array([fan.downstream_rpm for module in self.modules for fan in module.fans]).std()
 
     
-    def pwm_matrix(self, layer="upstream"):
+    def pwm_matrix(self, layer:str="upstream") -> None:
         matrix = np.zeros(
             (self.array_fan_rows, self.array_fan_columns)
         )
@@ -86,7 +86,7 @@ class ArrayState:
         return matrix
 
 
-    def rpm_matrix(self, layer="upstream"):
+    def rpm_matrix(self, layer:str="upstream") -> None:
         matrix = np.zeros(
             (self.array_fan_rows, self.array_fan_columns)
         )

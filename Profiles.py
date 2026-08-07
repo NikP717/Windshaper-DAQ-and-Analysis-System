@@ -1,4 +1,4 @@
-from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode
+from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode, FanInstruction, Vel
 from models.wind.FanSelection import FanSelection
 from models.wind.WindState import ArrayState
 from math import sin, pi
@@ -8,28 +8,29 @@ ALL_FANS = FanSelection()
 UPSTREAM_FANS = FanSelection(layer="upstream")
 DOWNSTREAM_FANS = FanSelection(layer="downstream")
 
-# MODULE_ROWS = int(ArrayState.array_fan_rows) / 3
-# MODULE_COLUMNS = int(ArrayState.array_fan_columns) /3
-# FAN_ROWS = ArrayState.array_fan_rows
-# FAN_COLUMNS = ArrayState.array_fan_columns
+"""PWM BASED PROFILES"""
 
 def uniform_flow(pwm, duration):
     name = "uniform_flow"
     profile = WindProfileBuilder(duration)
     profile.at_time(0, 
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.PWM,instruction=pwm)
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm=pwm)
+                               )
                     )
     return profile.build(name)
 
 def sine_flow(average,frequency,amplitude,duration):
     name = "sine_flow"
     def sine_function(x_pos: float, y_pos: float, time: float):
-        intensity = average + amplitude * sin(2*pi*time*frequency) 
+        intensity = 0 + average + amplitude * sin(2*pi*time*frequency) 
         return intensity
     
     profile = WindProfileBuilder(duration)
     profile.at_time(0,
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.FUNCTION,instruction=sine_function)
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=sine_function)
+                               )
                     )
     return profile.build(name)
 
@@ -37,14 +38,20 @@ def step_response(start_pwm, step_pwm, duration_step, duration_before_after_step
     name = "step_response"
     profile = WindProfileBuilder(duration_step + 2*duration_before_after_step)
     profile.at_time(0,
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.PWM,instruction=start_pwm)
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm=start_pwm)
+                               )
                     )
     profile.at_time(duration_before_after_step,
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.PWM,instruction=step_pwm)
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm=step_pwm)
+                               )
                     )
     profile.at_time(duration_before_after_step+duration_step,
-                FanCommand(selection=ALL_FANS,mode_type=ControlMode.PWM,instruction=start_pwm)
-                )
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm=start_pwm)
+                               )
+                    )
     return profile.build(name)
 
 def ramp_response(start_pwm, end_pwm, pwm_rate, duration_peak_ramp, duration_before_after_ramp):
@@ -82,6 +89,11 @@ def ramp_response(start_pwm, end_pwm, pwm_rate, duration_peak_ramp, duration_bef
         else:
             return start_pwm
 
+    profile.at_time(0,
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=ramp_func)
+                               )
+                    )
     profile.at_time(0,
                 FanCommand(selection=ALL_FANS,mode_type=ControlMode.FUNCTION,instruction=ramp_func)
                 )
@@ -133,19 +145,25 @@ def sine_checkered_array(upstream_sine_amp_1, downstream_sine_amp_1, upstream_si
         return intensity
 
     profile.at_time(0,
-                    FanCommand(selection=checkered_1_up,mode_type=ControlMode.FUNCTION,instruction=upstream_sine_function_1),
-                    FanCommand(selection=checkered_2_up,mode_type=ControlMode.FUNCTION,instruction=upstream_sine_function_2),
-                    FanCommand(selection=checkered_1_down,mode_type=ControlMode.FUNCTION,instruction=downstream_sine_function_1),
-                    FanCommand(selection=checkered_2_down,mode_type=ControlMode.FUNCTION,instruction=downstream_sine_function_2))
-    
-    return profile.build(name)
-
-def velocity_control_uniform_flow(velocity, duration):
-    name = "v_control_uniform_flow"
-    profile = WindProfileBuilder(duration)
-    profile.at_time(0, 
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.VELOCITY,instruction=velocity)
+                    FanCommand(selection=checkered_1_up,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=upstream_sine_function_1)),
+                    FanCommand(selection=checkered_2_up,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=upstream_sine_function_2)),
+                    FanCommand(selection=checkered_1_down,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=downstream_sine_function_1)),
+                    FanCommand(selection=checkered_2_down,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=downstream_sine_function_2))
                     )
     return profile.build(name)
 
-#NOTE: NEED TO CREATE PROFILE CHECKER WITHIN .BUILD TO ENSURE A PROFILE DOESNT BREAK SYSTEM INSTEAD OF CHECKING WITHIN THE SYSTEM
+"""VELOCITY BASED PROFILES"""
+# TODO: Make a system which allows users to input velocity wind functions -> Requires an adjustable function class with __call__ (acts as function but
+# can change parameters) -> also would need a system for users to easily create new adjustable wind functions although a little complex.
+def velocity_control_uniform_flow(velocity, TI, duration):
+    name = "v_control_uniform_flow"
+    profile = WindProfileBuilder(duration)
+    profile.at_time(0, 
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.VELOCITY,
+                                                          velocity=velocity,
+                                                          velocity_component=Vel.Z, 
+                                                          TI = TI)
+                                )
+                    )
+    return profile.build(name)

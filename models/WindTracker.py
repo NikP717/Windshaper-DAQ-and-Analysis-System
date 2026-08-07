@@ -7,8 +7,10 @@ from rich.live import Live
 from rich.table import Table
 from rich.panel import Panel
 
+
+
 class WindTracker():
-    def __init__(self,active_windshaper_instance, active_probe_instance):
+    def __init__(self,active_windshaper_instance, active_probe_instance) -> None:
         self.zero_position = None
         self.zero_rot = None
         self.zero_rot_inv = None
