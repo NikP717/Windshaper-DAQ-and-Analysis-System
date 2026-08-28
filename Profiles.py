@@ -1,4 +1,4 @@
-from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode, FanInstruction, Vel
+from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode, FanInstruction, Vel, SpectralContent
 from models.wind.FanSelection import FanSelection
 from models.wind.WindState import ArrayState
 from math import sin, pi
@@ -94,29 +94,6 @@ def ramp_response(start_pwm, end_pwm, pwm_rate, duration_peak_ramp, duration_bef
                                instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=ramp_func)
                                )
                     )
-    profile.at_time(0,
-                FanCommand(selection=ALL_FANS,mode_type=ControlMode.FUNCTION,instruction=ramp_func)
-                )
-    return profile.build(name)
-
-def alpha_boundary_layer(alpha, top_pwm, duration):
-    name="alpha_bl"
-    profile=WindProfileBuilder(duration)
-    # TO BE FIXED USING NEW FAN ROWS FEATURE
-    def alpha_bl_func(x_pos: float, y_pos: float, time: float):
-        rows = ArrayState.module_rows * 3
-        y_max = rows * ArrayState.DIST_BETWEEN_FANS
-        print(f"{y_pos} position, {y_max} max")
-        try:
-            intensity = int((1 - y_pos/y_max)**alpha) * top_pwm
-        except TypeError: # when it becomes complex because it exceeds ymax
-            intensity = alpha * top_pwm
-        return intensity
-
-    profile.at_time(0,
-                    FanCommand(selection=ALL_FANS,mode_type=ControlMode.FUNCTION,instruction=alpha_bl_func)
-                    )
-    pass
     return profile.build(name)
 
 def sine_checkered_array(upstream_sine_amp_1, downstream_sine_amp_1, upstream_sine_amp_2, downstream_sine_amp_2, upstream_sine_fq_1, downstream_sine_fq_1, upstream_sine_fq_2, downstream_sine_fq_2, mean_pwm,duration):
@@ -152,10 +129,51 @@ def sine_checkered_array(upstream_sine_amp_1, downstream_sine_amp_1, upstream_si
                     )
     return profile.build(name)
 
+def turbulence_response(average_pwm, amplitude_pwm, frequency, duration):
+    name = "turbulence_response"
+    profile=WindProfileBuilder(duration)
+
+    selection1 = FanSelection(fans=[1,3,5,7,9], parity="even")
+    selection11 = FanSelection(fans=[2,4,6,8], parity="odd")
+    selection2 = FanSelection(fans=[1,3,5,7,9], parity="odd")
+    selection22 = FanSelection(fans=[2,4,6,8], parity="even")
+
+    phase_1 = 2 * pi * frequency
+    phase_2 = phase_1 - pi
+    t0_1 = 0
+    t0_2 = 0
+
+    def sine_function_1(x_pos: float, y_pos: float, time: float):
+        nonlocal t0_1  # windshaper time isnt zeroed internally
+        if t0_1 == 0:
+            t0_1 = time 
+    
+        time -= t0_1
+        intensity = average_pwm + amplitude_pwm * sin(phase_1 * time) 
+        return intensity
+
+    def sine_function_2(x_pos: float, y_pos: float, time: float):
+        nonlocal t0_2  # windshaper time isnt zeroed internally
+        if t0_2 == 0:
+            t0_2 = time 
+    
+        time -= t0_2
+        
+        intensity = average_pwm + amplitude_pwm * sin(phase_2 * time) 
+        return intensity
+
+    profile.at_time(0,
+                    FanCommand(selection1, FanInstruction(control_mode=ControlMode.PWM, pwm_wind_function=sine_function_1)),
+                    FanCommand(selection11, FanInstruction(control_mode=ControlMode.PWM, pwm_wind_function=sine_function_1)),
+                    FanCommand(selection2, FanInstruction(control_mode=ControlMode.PWM, pwm_wind_function=sine_function_2)),
+                    FanCommand(selection22, FanInstruction(control_mode=ControlMode.PWM, pwm_wind_function=sine_function_2))
+    )
+
+    return profile.build(name)
+
 """VELOCITY BASED PROFILES"""
-# TODO: Make a system which allows users to input velocity wind functions -> Requires an adjustable function class with __call__ (acts as function but
-# can change parameters) -> also would need a system for users to easily create new adjustable wind functions although a little complex.
-def velocity_control_uniform_flow(velocity, TI, duration):
+
+def velocity_control_uniform_flow(velocity, duration, TI = None,  spectral_frequency_peaks: None | SpectralContent = None):
     name = "v_control_uniform_flow"
     profile = WindProfileBuilder(duration)
     profile.at_time(0, 
@@ -163,7 +181,8 @@ def velocity_control_uniform_flow(velocity, TI, duration):
                                instruction=FanInstruction(control_mode=ControlMode.VELOCITY,
                                                           velocity=velocity,
                                                           velocity_component=Vel.Z, 
-                                                          TI = TI)
+                                                          TI = TI,
+                                                          target_spectral_content=spectral_frequency_peaks)
                                 )
                     )
     return profile.build(name)

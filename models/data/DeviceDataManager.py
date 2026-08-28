@@ -17,6 +17,9 @@ class DeviceDataManager():
         for devices in self.registered_devices_list:
             self.data_instance_dict[devices] = WindDataset(self.config.manual_meta_data)
 
+    def stop(self) -> None:
+        self.stop_event.set()
+    
     def set_metadata(self) -> None:
         for device, data in self.data_instance_dict.items():
             if not self.config.manual_meta_data:

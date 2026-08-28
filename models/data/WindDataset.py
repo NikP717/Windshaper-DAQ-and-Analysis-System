@@ -28,6 +28,9 @@ class WindDataset:
         self.summary_data_z = DataFrame(columns = self.summary_columns)
         self.summary_data_3d = DataFrame(columns = self.summary_columns)
 
+        # Flag
+        self.cropped_status = False
+
         # Summary Data Analysis Parameters - currently hardcoded
         self.rolling_window_seconds = 3
         self.max_lag_seconds = 10
@@ -37,6 +40,8 @@ class WindDataset:
         self.meta_data.loc[len(self.meta_data)] = meta_data_row
     
     def store_buffered_probe_data(self,buffer_data: list):
+        if self.cropped_status: # prevent buffer data being stored after the data has been cropped in event of remaining buffers
+            return
         new_rows = pd.DataFrame(buffer_data, columns=self.probe_data.columns)
         # fix any errors in data
         for col in ["windspeed_x", "windspeed_y", "windspeed_z"]:
@@ -44,6 +49,7 @@ class WindDataset:
         self.probe_data = pd.concat([self.probe_data, new_rows], ignore_index=True)
 
     def crop_data_time(self,timeframe: tuple) -> None:
+        self.cropped_status = True
         df = self.probe_data
         init_time = timeframe[0] if (timeframe and len(timeframe) > 0) else None
         final_time = timeframe[1] if (timeframe and len(timeframe) > 1) else None

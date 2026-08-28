@@ -49,6 +49,8 @@ class OldProbe():
                 return False
 
     def _on_new_probe_data(self, raw_probe_data: ProbeRawData) -> None:
+        if self.stop_event.is_set():
+            return
         vel = raw_probe_data.windspeed_vels_mps
         time_elapsed = self.clock.time_elapsed
         windshape_parameters = self.windshaper.array_state

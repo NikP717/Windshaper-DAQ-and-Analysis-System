@@ -1,22 +1,25 @@
-
 from models.wind.FanSelection import FanSelection
 from models.wind.WindProfileBuilder import ControlMode
 from models.experiment.ExperimentConfig import ExperimentConfig
 from models.wind.WindProfileBuilder import WindProfileBuilder, FanCommand, ControlMode
 from models.data.WindDataset import WindDataset
+from models.calibration.BaseCalibration import BaseCalibration
 
 from pathlib import Path
 import numpy as np
 from scipy import stats
 import math
 
-
-class VelocityCalibration():
+class VelocityCalibration(BaseCalibration):
     def __init__(self, config: ExperimentConfig) -> None:
         self.config = config
-        self.vx_gain = 0
-        self.vy_gain = 0
-        self.vz_gain = 0
+        self.x_gain = 0
+        self.y_gain = 0
+        self.z_gain = 0
+        self.x_intercept = 0
+        self.y_intercept = 0
+        self.z_intercept = 0
+        self.calibration_meta_data_label = "velocity_cal"
 
         self.pwm_sequence = range(10,66,5)
         self.time_step = 10
@@ -62,14 +65,17 @@ class VelocityCalibration():
         slopey, intercepty, _, _, _ = stats.linregress(pwms, vy)
         slopez, interceptz, _, _, _ = stats.linregress(pwms, vz)
 
-        if math.isnan(self.vx_gain) or math.isnan(self.vy_gain) or math.isnan(self.vz_gain):
+        if math.isnan(self.x_gain) or math.isnan(self.y_gain) or math.isnan(self.z_gain):
             raise ValueError("Invalid Gain detected, failed callibration.")
         
-        self.vx_gain = slopex
-        self.vy_gain = slopey
-        self.vz_gain = slopez
+        self.x_gain = slopex
+        self.y_gain = slopey
+        self.z_gain = slopez
+        self.x_intercept = interceptx
+        self.y_intercept = intercepty
+        self.z_intercept = interceptz
 
-        if self.vz_gain == 0: # self.vx_gain == 0 or self.vy_gain == 0 or
+        if self.z_gain == 0: # self.x_gain == 0 or self.y_gain == 0 or
                     raise ValueError("Zero Gain detected, failed callibration.")
 
     def _get_new_winddata(self) -> WindDataset:

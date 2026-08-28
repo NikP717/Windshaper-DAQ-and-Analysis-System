@@ -38,33 +38,35 @@ class NewProbe():
             self.plotter.close()
 
     def _on_new_probe_data(self, raw_probe_data: WindProbeData) -> None:
-            vel = raw_probe_data.wind_velocity_mps_probe_ref
-            time_elapsed = self.clock.time_elapsed
-            windshape_parameters = self.windshaper.array_state
-            row =  [
-                    time_elapsed,
-                    vel.x,
-                    vel.y,
-                    vel.z,
-                    raw_probe_data.static_pressure_pascal,
-                    raw_probe_data.temperature_celcius,
-                    raw_probe_data.atmospheric_pressure_hpascal,
-                    *windshape_parameters.array_probe_snapshot_upstream,
-                    *windshape_parameters.array_probe_snapshot_downstream
-                ]
-                
-            self.plot_fq_limiter += 1
-            if self.plotter and self.plot_fq_limiter % 4 == 0:
-                self.plotter.push(row)
-                self.plot_fq_limiter = 0
-
-            if self.feedback_state:
-                feedback = ProbeFeedbackState()
-                ProbeFeedbackState.windspeed_x = vel.x
-                ProbeFeedbackState.windspeed_y = vel.y
-                ProbeFeedbackState.windspeed_z = vel.z
-                feedback.change_time(self.clock)
+        if self.stop_event.is_set():
+            return
+        vel = raw_probe_data.wind_velocity_mps_probe_ref
+        time_elapsed = self.clock.time_elapsed
+        windshape_parameters = self.windshaper.array_state
+        row =  [
+                time_elapsed,
+                vel.x,
+                vel.y,
+                vel.z,
+                raw_probe_data.static_pressure_pascal,
+                raw_probe_data.temperature_celcius,
+                raw_probe_data.atmospheric_pressure_hpascal,
+                *windshape_parameters.array_probe_snapshot_upstream,
+                *windshape_parameters.array_probe_snapshot_downstream
+            ]
             
-            with self.buffer_lock:
-                self.current_buffer_data.append(row)
+        self.plot_fq_limiter += 1
+        if self.plotter and self.plot_fq_limiter % 4 == 0:
+            self.plotter.push(row)
+            self.plot_fq_limiter = 0
+
+        if self.feedback_state:
+            feedback = ProbeFeedbackState()
+            ProbeFeedbackState.windspeed_x = vel.x
+            ProbeFeedbackState.windspeed_y = vel.y
+            ProbeFeedbackState.windspeed_z = vel.z
+            feedback.change_time(self.clock)
+        
+        with self.buffer_lock:
+            self.current_buffer_data.append(row)
     

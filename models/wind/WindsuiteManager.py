@@ -96,7 +96,6 @@ class WindsuiteManager():
     def apply_instructions(self) -> None:  
         if not self.stop_status:
             for pwm_cmd, func_cmd, in zip_longest(self.pwm_commands,self.functions,fillvalue=None):
-
                 if pwm_cmd is not None:
                     pwm_instr = pwm_cmd[1].pwm
 

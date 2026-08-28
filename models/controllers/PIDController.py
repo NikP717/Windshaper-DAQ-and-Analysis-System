@@ -4,20 +4,20 @@ import math
 import numpy as np
 
 class PIDController():
-    def __init__(self, kp, ki, kd) -> None:
+    def __init__(self, kp, ki, kd, lim=(-20,20)) -> None:
         self.kp = kp
         self.ki = ki
         self.kd = kd
         # Output limits
-        self.output_min = -20
-        self.output_max = 20
+        self.output_min = lim[0]
+        self.output_max = lim[1]
 
         # Anti-windup
         self.anti_windup_gain = 0.2
 
         # Derivative filter time constant (seconds)
         self.cutoff_fq = 5 # Hz
-        self.derivative_filter_tau: float = 1/self.cutoff_fq*(2*math.pi)
+        self.derivative_filter_tau: float = 1/(self.cutoff_fq*(2*math.pi))
 
         # Derivative on measurement avoids setpoint kick
         self.derivative_on_measurement = True
@@ -36,7 +36,7 @@ class PIDController():
         if dt <= 0:
             return 0
         if math.isnan(measurement):
-            return 0
+            measurement = 0
         
         error = target - measurement
 

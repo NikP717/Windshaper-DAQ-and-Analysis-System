@@ -49,20 +49,29 @@ class ExperimentSeriesDataSet:
                   self.processed_files.append(new_path)
                   self.processed_files.append(path)
 
-    def save(self, remove_raw_data: bool = False) -> None:
+    def save(self, save_to_excel: bool = True, remove_raw_data: bool = False) -> None:
         # WINDANALYSIS
         # > EXPERIMENT NAME (FOLDER)
         # > > EXCEL SHEET OF OVERALL DATA SET
         # > > PICKLED OBJECT CLASS IF BEING LOADED LATER
         # > > RAWDATA (FOLDER)
-        # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT IN EXCEL FORM
-        """Only use for newly created experimental data, forcefully moves Winddata used into this new instance"""
+        # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT IN EXCEL FORM UNLESS EXCEL SAVING IS DISABLED
+        """Only use for newly created experimental data, forcefully moves Winddata used into this new instance.
+        If this directory already exists, it moves the currently stored experimental data into winddata to create an updated directory with additional data"""
 
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDANALYSIS" / self.name # experiment folder in wind analysis
         raw_data_output = output_dir / "RAWDATA" 
-        raw_data_output.mkdir(parents=True, exist_ok=True)
-
+        try:
+            raw_data_output.mkdir(parents=True)
+        except FileExistsError:
+            self._merge_datasets(path=output_dir/f"{self.name}.pkl")
+            for file in raw_data_output.iterdir():
+                if file.suffix in [".pkl",".xlsx"]:
+                    shutil.move(file, project_dir / "WINDDATA") # moves back to winddata so other datasets paths of processed files is valid
+            shutil.rmtree(output_dir) # delete old
+            raw_data_output.mkdir(parents=True) # create new
+        
         for paths in self.processed_files:
              if paths.exists():
                 if remove_raw_data:
@@ -72,9 +81,15 @@ class ExperimentSeriesDataSet:
 
         self.data_set = pd.DataFrame(self._rows, columns=self.columns)
         self._rows.clear() # saves data storage
-        self.processed_files.clear() # saves data storage
         self._save_obj(output_dir)
-        self._save_to_xl(output_dir)
+        if save_to_excel:
+            self._save_to_xl(output_dir)
+
+    def _merge_datasets(self, path: Path):
+        other_dataset = self.load(path) # initiate classmethod to produce another instance of self
+        other_rows = other_dataset.data_set.values.tolist()
+        self._rows.extend(other_rows)
+        self.processed_files.extend(other_dataset.processed_files)
 
     def _save_obj(self, output_dir: Path) -> None:
         """Saves object class as a pickle instance"""

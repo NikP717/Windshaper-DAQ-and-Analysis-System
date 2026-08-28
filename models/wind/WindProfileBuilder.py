@@ -14,15 +14,21 @@ class Vel(Enum):
     Z = "z"
 
 @dataclass
+class SpectralContent:
+    """Frequency amplitude dictionary holder class:
+    Dictionary must be: {frequency: amplitude} where amplitude is between 0-1 (relative) and frequency should be under 0.6Hz."""
+    frequency_amplitude_dict: dict
+
+@dataclass
 class FanInstruction:
     control_mode: ControlMode
     pwm: Optional[float] = None
     velocity_component: Optional[Vel] = None
-    velocity_wind_function: Optional[Callable] = None
+    # velocity_wind_function: Optional[Callable] = None
     pwm_wind_function: Optional[Callable] = None
     velocity: Optional[float] = None
     TI: Optional[float] = None
-    target_spectral_content: Optional[list] = None
+    target_spectral_content: Optional[SpectralContent] = None
 
 @dataclass
 class FanCommand:
@@ -44,12 +50,14 @@ class WindProfile:
     control_status: ControlStatus
     duration: float
     steps: list[ProfileStep]
+    turbulence_control: bool = False
 
 class WindProfileBuilder:
     def __init__(self,duration: float) -> None:
         self.steps = []
         self.duration = duration
         self.open_loop_status = True
+        self.turbulence_status = False
 
     def at_time(self, time: float, *commands) -> None:
         self.steps.append(
@@ -71,6 +79,8 @@ class WindProfileBuilder:
         for step in self.steps:
             for command in step.commands:
                 if command.instruction.control_mode == ControlMode.VELOCITY:
+                    if command.instruction.TI is not None:
+                        self.turbulence_status = True
                     velocity_count +=1
                 elif command.instruction.control_mode == ControlMode.PWM:
                     pwm_count += 1
@@ -89,6 +99,7 @@ class WindProfileBuilder:
         return WindProfile(
             name = name,
             control_status = control_status,
+            turbulence_control = self.turbulence_status,
             duration=self.duration,
             steps=self.steps
         )

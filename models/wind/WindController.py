@@ -2,7 +2,6 @@ from models.wind.WindsuiteManager import WindsuiteManager
 from models.experiment.ExperimentClock import ExperimentClock
 from models.wind.WindProfileBuilder import ControlMode, ControlStatus
 from models.controllers.ClosedLoopControlManager import ClosedLoopControlManager
-from models.wind.FanSelection import FanSelection
 
 import threading
 
@@ -30,6 +29,7 @@ class WindController():
             while not self.stop_event.is_set():
                 if self.stop_event.wait(1 / self.check_hz):
                     break
+
                 time_elapsed = self.clock.timer_time_elapsed
                 if time_elapsed >= self.profile.duration:
                     self.stop_event.set()
@@ -37,10 +37,15 @@ class WindController():
                 self._check_profile_steps(time_elapsed)
 
                 if not self.open_loop:
-                    control_instr = self.closed_loop_control_manager.update()
-                    all_fans = FanSelection()
-                    self.windwrapper.add_instr(all_fans, control_instr)
-                    self.windwrapper.apply_instructions()
+                    if not self.closed_loop_control_manager.control_init:
+                        control_instr = self.closed_loop_control_manager.update()
+                        if control_instr:
+                            for select, instr in control_instr:
+                                self.windwrapper.add_instr(select, instr)
+                            self.windwrapper.apply_instructions()
+                    else:
+                        control_instr = self.closed_loop_control_manager.update()
+                        self.windwrapper.apply_instructions()
 
         except KeyboardInterrupt:
             self.stop_event.set()
@@ -50,6 +55,8 @@ class WindController():
 
     def stop_control(self) -> None:
         self.windwrapper.stop_windshaper()
+        if self.closed_loop_control_manager is not None:
+            self.closed_loop_control_manager.stop()
 
     def end_control(self) -> None:
         self.windwrapper.turnoff_windshaper()
@@ -72,7 +79,7 @@ class WindController():
                         self.windwrapper.apply_instructions()
                         if command.instruction.control_mode == ControlMode.PWM: # pwm executed steps dont need to be repeated so we ignore them once executed
                             # windfunctions need to be evaluated at every time step, so continuously fed through.
-                            if command.instruction.pwm_wind_function is not None:
+                            if command.instruction.pwm_wind_function is None:
                                 self.executed_steps.add(i) 
 
                     else:

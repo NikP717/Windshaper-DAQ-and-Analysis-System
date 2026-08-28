@@ -9,6 +9,7 @@ from models.experiment.ExperimentClock import ExperimentClock
 from models.wind.WindState import ArrayState
 import models
 import threading
+import time
 
 # MAIN THREAD OPERATION
 class DeviceManager():
@@ -68,16 +69,19 @@ class DeviceManager():
     def run_devices(self) -> None:
         try:
             while not self.stop_event.is_set():
+                # if self.stop_event.wait(0.001):
+                #     break
                 for devices in self.registered_devices:
                     if type(devices) == OldProbe:
                         if devices.probe_error.is_set() or devices.stop_event.is_set():
                             break
                         devices.transceiver.reading_routine() # only old probe has a transceiver system
+                    if type(devices) == SimProbe:
+                        time.sleep(0.005) # no internal blocking function, stops from filling CPU
 
                 if not self.windcontrol_thread.is_alive():
                     print("[WINDSHAPER] WindShaper thread completed its profile. Terminating script...")
                     self.stop_event.set()
-                self.stop_event.wait(0.001)
 
         except KeyboardInterrupt:
             print("Forcing Shutdown...")
@@ -92,6 +96,7 @@ class DeviceManager():
         self.windcontroller.stop_control() # stops fans in event of emergency stop trigger
         for devices in self.registered_devices:
             devices.stop()
+        self.data_manager.stop()
         self.writer_thread.join(timeout=1)
         self.windcontrol_thread.join(timeout=1)
         self.windcontroller.end_control()
@@ -106,16 +111,17 @@ class DeviceManager():
 
     def _generate_device_instances(self) -> None:
         for ids, devices in self.device_dict.items():
+            
+            input_feedback_state = False
             if self.controller_feedback_list is not None:
                 if ids in self.controller_feedback_list:
-                    new_device = devices(self.windcontroller, ids, self.clock, feedback_state=True)
-            else:
-                new_device = devices(self.windcontroller, ids, self.clock, feedback_state=False)
+                    input_feedback_state = True
+
+            new_device = devices(self.windcontroller, ids, self.clock, feedback_state=input_feedback_state)
             self.registered_devices.append(new_device)
         self.data_manager = DeviceDataManager(self.windcontroller,self.registered_devices, self.config)
 
     def _set_live_plotting_instances(self) -> None:
-        # CURRENTLY LIVE PLOTTER ONLY SUPPORTS ONE DEVICE
         wind_plot = False
         probe_plot = False
         if self.config.live_probe_data:
@@ -124,8 +130,16 @@ class DeviceManager():
             wind_plot = True
 
         if wind_plot or probe_plot:
-            single_device = self.registered_devices[0]
-            single_device.plotter = LivePlotter(single_device.ID ,probe_plot, wind_plot, (ArrayState.module_rows*3, ArrayState.module_columns*3))
+            i = 0
+            for device in self.registered_devices:
+                # prevents multiple windshaper callback plots being initiated
+                if i != 0:
+                    wind_plot_condition = False
+                else:
+                    wind_plot_condition = wind_plot
+
+                device.plotter = LivePlotter(device.ID , probe_plot, wind_plot_condition, (ArrayState.module_rows*3, ArrayState.module_columns*3))
+                i+=1
 
 
 

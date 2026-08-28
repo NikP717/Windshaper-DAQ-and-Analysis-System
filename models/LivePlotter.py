@@ -1,7 +1,7 @@
 import multiprocessing as mp
 from collections import deque
 import numpy as np
-
+import time
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtWidgets, QtCore
 
@@ -15,10 +15,11 @@ class LivePlotter:
         self.wind_plot = wind_plot
         self.fan_shape = fan_shape
         self.probe_id = probe_instance_ID
+        self.shutdown = mp.Event()
 
         self.proc = mp.Process(
             target=self._gui_process,
-            args=(self.q, self.max_points),
+            args=(self.q, self.max_points, self.shutdown),
             daemon=True,
         )
 
@@ -33,10 +34,10 @@ class LivePlotter:
 
     def close(self) -> None:
         if self.proc.is_alive():
-            self.proc.terminate()
+            self.shutdown.set() 
             self.proc.join(timeout=2)
 
-    def _gui_process(self, q, max_points) -> None:
+    def _gui_process(self, q, max_points, shutdown_status) -> None:
 
         app = QtWidgets.QApplication([])
 
@@ -210,4 +211,10 @@ class LivePlotter:
         timer.timeout.connect(update)
         timer.start(33)
 
-        app.exec()
+        # app.exec()
+        # manual event loop instead to ensure clean exit
+        while not shutdown_status.is_set():
+            app.processEvents()
+            time.sleep(0.01)
+
+        app.quit()
