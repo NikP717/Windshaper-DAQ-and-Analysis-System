@@ -8,8 +8,8 @@ class FanSelection:
     fan_rows: Optional[list[int]] = None
     module_rows: Optional[list[int]] = None
     fans: Optional[list[int]] = None
+    fan_columns: Optional[list[int]] = None
     module_columns: Optional[list[int]] = None
-    fans: Optional[list[int]] = None
     layer: Optional[str] = None
     parity: Optional[str] = None
 

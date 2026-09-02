@@ -42,18 +42,21 @@ class ExperimentSeriesDataSet:
         listed_vars.extend(data_row)
         self._rows.append(listed_vars)
 
-    def input_winddata(self) -> None:
+    def input_winddata(self, save_to_excel: bool = True) -> None:
         """Function which adds Winddatasets to the parent class dataset and records the file process and saves an excel instance of winddata for user reference."""
         project_dir = Path(__file__).resolve().parent.parent.parent
         data_dir = project_dir / "WINDDATA"
 
         for path in data_dir.iterdir():
              if path.is_file() and path.suffix in ['.pkl']:
-                  winddata = WindDataset.load(path)
-                  self._add_experiment(winddata)
-                  new_path = winddata.save_to_xl()
-                  self.processed_files.append(new_path)
-                  self.processed_files.append(path)
+                winddata = WindDataset.load(path)
+                self._add_experiment(winddata)
+                self.processed_files.append(path)
+                
+                if save_to_excel:
+                    new_path = winddata.save_to_xl()
+                    self.processed_files.append(new_path)
+
 
     def save(self, save_to_excel: bool = True, remove_raw_data: bool = False) -> None:
         """Function which saves the ExperimentSeriesDataSet instance as a pkl file storing the dataset and processed files in WINDANALYSIS,

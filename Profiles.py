@@ -13,7 +13,7 @@ Key Profile Information
 - ProfileCommands carry a FanSelection and a FanInstruction.
 
 - ProfileSteps are initiated here by profile.at_time(time, FanCommand*) -> Can apply multiple fan commands at one time.
-- FanSelection acts as a filter, the more specifiers you use e.g layer, fan_row, parity, etc. the less fans are selected.
+- FanSelection acts as a filter, the more specifiers you use e.g layer, fan_row, parity, etc. the less fans are selected. See models.wind.FanSelection for more.
 - Windfunctions must have an x_pos, y_pos, and time field as a requirement of WindSuiteSDK (see sine_flow below for an example) and return an intensity.
 
 - Closed loop and open loop commands cannot be mixed in one profile.

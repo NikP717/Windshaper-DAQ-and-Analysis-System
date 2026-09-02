@@ -26,6 +26,7 @@ class OldProbe():
         self.transceiver = NucleoProbeTransceiver(probe_ready=self.probe_ready,probe_error=self.probe_error,callback_new_probe_data=self._on_new_probe_data)
         self.clock = clock
         self.ID = ID
+        self.tracking_ID = 1
 
         # connection notification manager stored
         self.failed_connect_notif = False

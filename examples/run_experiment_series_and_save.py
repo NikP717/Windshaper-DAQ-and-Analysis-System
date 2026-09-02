@@ -64,7 +64,7 @@ if __name__ == "__main__":
                     measurement_device_dict={'probe_1':NewProbe},
                     probe_tracking = False, 
                     live_probe_data = True,
-                    live_windshaper_data = True
+                    live_windshaper_data = False
                 )
         ExperimentRunner.run_configuration(configuration)
 

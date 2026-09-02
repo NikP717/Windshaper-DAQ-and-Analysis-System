@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import math
 import logging
+import threading
 
 from models.wind.WindState import FanState, ModuleState, ArrayState
 from models.wind.FanSelection import FanSelection
@@ -27,6 +28,7 @@ class WindsuiteManager():
         self.array_state = ArrayState(modules=None)
 
         # Initialisation sequence
+        self.empty_callback_event = threading.Event()
         self.start_windshaper()
         self.layouts = self.sdk_instance.layouts.get_available_layouts()
         self.set_wall_selection(self.fan_wall_selection)
@@ -41,9 +43,9 @@ class WindsuiteManager():
         ArrayState.module_rows = self.sdk_instance.current_layout.nb_rows
         ArrayState.module_columns = self.sdk_instance.current_layout.nb_columns
 
-        # Windshaper Off Flag
+        # Windshaper Flags
         self.stop_status = False
-
+        
         # Active Command Storage before running
         self.pwm_commands = []
         self.functions = []
@@ -135,14 +137,16 @@ class WindsuiteManager():
                     controller_func = instr_func.pwm_wind_function
                     controller = selection_func.apply(self.fan_controller)
                     controller.set_intensity_function(controller_func)
-
-                controller.apply()
+                    controller.apply()
             self.pwm_commands.clear()
         else:
             self.fan_controller.set_intensity(0).apply()
             
     def _on_module_update(self,data: dict[tuple[int, int], ModuleInfo]) -> None: 
         """Function which acts as callback for the Windshaper fan status and stores it in the ArrayState object for global reference."""
+        if self.empty_callback_event.is_set():
+            return
+        
         modules = []
         for (row, col), module_info in data.items():
             fans = []
@@ -159,5 +163,8 @@ class WindsuiteManager():
 
             modules.append(ModuleState(row=row, col=col, fans=fans))
 
-        self.array_state.modules = modules
-
+        if modules:
+            self.array_state.modules = modules
+        else:
+            logger.error("Windshaper Empty Callback, try checking connections or layout selection.")
+            self.empty_callback_event.set()

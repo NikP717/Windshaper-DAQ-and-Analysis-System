@@ -39,6 +39,9 @@ class WindController():
                 if self.stop_event.wait(1 / self.check_hz):
                     break
 
+                if self.windwrapper.empty_callback_event.is_set():
+                    raise ValueError("Empty callback detected.")
+
                 # time check
                 time_elapsed = self.clock.timer_time_elapsed
                 if time_elapsed >= self.profile.duration:

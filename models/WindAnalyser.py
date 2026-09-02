@@ -41,28 +41,80 @@ class WindAnalyser:
         return dataset_obj.data_set
 
     @staticmethod
-    def _mean_mixed(series) -> float: # for column averaging
-        """Helper function which averages mixed data (listed cells and float cells)"""
+    def _mean_mixed(series):
+        """Compute mean for mixed scalar/list columns safely."""
         first_val = series.iloc[0]
-        #  list inside the cell (for listed vars)
+
+        # Case 1 — list/array inside cell
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
-            arrays = [np.asarray(v, dtype=float) for v in series]
+            arrays = []
+
+            # Convert each entry to a 1D float array
+            for v in series:
+                a = np.asarray(v, dtype=float).ravel()
+                if len(a) > 0:
+                    arrays.append(a)
+
+            # If nothing usable, return NaN
+            if len(arrays) == 0:
+                return np.nan
+
+            # Find max length across repeats
             max_len = max(len(a) for a in arrays)
-            padded = np.vstack([np.pad(a, (0, max_len - len(a)), 'edge') for a in arrays])
+
+            padded = []
+            for a in arrays:
+                if len(a) < max_len:
+                    # pad shorter arrays using edge mode
+                    a = np.pad(a, (0, max_len - len(a)), mode='edge')
+                elif len(a) > max_len:
+                    # truncate longer arrays
+                    a = a[:max_len]
+                padded.append(a)
+
+            padded = np.vstack(padded)
             return padded.mean(axis=0)
-        # float in the cell
+
+        # Case 2 — scalar column
         return float(np.mean(series))
 
     @staticmethod
-    def _std_mixed(series) -> float: # for creating standard deivation columns
-        """Helper function which finds the std of mixed data (listed cells and float cells)"""
+    def _std_mixed(series):
+        """Compute std for mixed scalar/list columns safely."""
         first_val = series.iloc[0]
+
+        # Case 1 — list/array inside cell
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
-            arrays = [np.asarray(v, dtype=float) for v in series]
+            arrays = []
+
+            # Convert each entry to a 1D float array
+            for v in series:
+                a = np.asarray(v, dtype=float).ravel()
+                if len(a) > 0:
+                    arrays.append(a)
+
+            if len(arrays) == 0:
+                return np.nan
+
+            # Find max length
             max_len = max(len(a) for a in arrays)
-            padded = np.vstack([np.pad(a, (0, max_len - len(a)), 'edge') for a in arrays])
-            return padded.std(axis=0)
-        return float(np.std(series))
+
+            # Pad or truncate each array to max_len
+            padded = []
+            for a in arrays:
+                if len(a) < max_len:
+                    # pad using edge mode
+                    a = np.pad(a, (0, max_len - len(a)), mode='edge')
+                elif len(a) > max_len:
+                    # truncate longer arrays
+                    a = a[:max_len]
+                padded.append(a)
+
+            padded = np.vstack(padded)
+            return padded.std(axis=0, ddof=1)
+
+        # Case 2 — scalar column
+        return float(np.std(series, ddof=1))
     
     @staticmethod
     def _mean_circular(series) -> float:
@@ -104,15 +156,19 @@ class WindAnalyser:
         """Function which averages the repeat instances of configurations and collapses them into a dataset with averaged results.
         
         From each experiment repeat group converts it to one result mean with a standard deviation for error analysis:
-        e.g Repeat 1,2,3 collapsed into 1 datapoint into a mean and standard deviation as an additional column for each variable"""
+        e.g Repeat 1,2,3 collapsed into 1 datapoint into a mean and standard deviation as an additional column for each variable
+        
+        Groupby is used for any variables you do not wish to average across repeats.
+        
+        Ignores repeats and probe_id columns by default"""
         # btw this function made me want to die
         if groupby:
             non_averaging_columns = groupby
         else:
             data_structure = WindDataset()
-            non_averaging_columns = [col for col in data_structure.meta_columns if col != 'repeat']
+            non_averaging_columns = [col for col in data_structure.meta_columns if col not in ['repeat','probe_id']]
         
-        numeric_cols = [col for col in dataset.columns if col not in non_averaging_columns and col != "repeat"]
+        numeric_cols = [col for col in dataset.columns if col not in non_averaging_columns and col not in ['repeat','probe_id']]
         mean_agg_dict = {}
         std_agg_dict = {}
 
@@ -190,7 +246,7 @@ class WindAnalyser:
             print(f"Error occured: {e}")
     
     @classmethod
-    def plot_tool(cls,dataframe: pd.DataFrame,raw_dataframe: pd.DataFrame,x_quantity:str , y_quantity:str,xlabel:str,ylabel:str, group_by=None, plot_raw_data=False,error_bars = False,save=True,ax=None) -> plt.ax:
+    def plot_tool(cls,dataframe: pd.DataFrame,raw_dataframe: pd.DataFrame,x_quantity:str , y_quantity:str,xlabel:str,ylabel:str, group_by=None, plot_raw_data=False,error_bars = False,save=True,ax=None) -> object:
         """Plotting tool Function:
         Requires mean dataset and raw dataset as an input.
         x_quantity: str -> Column name from dataframe to act as x axis plot.

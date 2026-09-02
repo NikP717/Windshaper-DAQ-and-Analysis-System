@@ -26,12 +26,12 @@ class ExperimentRunner:
             self.tracker = False
 
     @staticmethod
-    def save_configuration_series(exp_name: str) -> ExperimentSeriesDataSet:
+    def save_configuration_series(exp_name: str, save_as_excel_too: bool = True) -> ExperimentSeriesDataSet:
         """Takes all current /WINDDATA pkl files and compiles them into one dataset witihn /WINDANALYSIS"""
         logger.info("Saving Experiment Series - DO NOT CLOSE.")
         experiment_series_data = ExperimentSeriesDataSet(exp_name)
-        experiment_series_data.input_winddata()
-        experiment_series_data.save()
+        experiment_series_data.input_winddata(save_as_excel_too)
+        experiment_series_data.save(save_as_excel_too)
         logger.info("Experiment Series Saved.")
         return experiment_series_data
 

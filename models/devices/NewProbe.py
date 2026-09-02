@@ -24,6 +24,7 @@ class NewProbe():
         self.plot_fq_limiter = 0
         self.clock = clock
         self.ID = ID
+        self.tracking_ID = None
         self.feedback_state = feedback_state
 
     def _zero_probe(self) -> bool: 

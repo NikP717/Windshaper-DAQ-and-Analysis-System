@@ -58,6 +58,9 @@ class DeviceManager():
         self.writer_thread = threading.Thread(target=self.data_manager.update_dataset_thread)
         self.writer_thread.daemon = True 
 
+        # Live plotter initialisation (Background multiprocess (not thread))
+        self._set_live_plotting_instances()
+
         # Windcontrol Start
         self.windcontrol_thread.start()
 
@@ -68,9 +71,6 @@ class DeviceManager():
 
         # Writer Start
         self.writer_thread.start()
-
-        # Live plotter initialisation (Background multiprocess (not thread))
-        self._set_live_plotting_instances()
 
         # Reading Loop
         self.run_devices()

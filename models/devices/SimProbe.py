@@ -26,6 +26,7 @@ class SimProbe:
         self.windshaper = windshaper_instance.windwrapper
         self.clock = clock
         self.ID = ID
+        self.tracking_ID = None
 
         self.plotter = None
         self.feedback_state = feedback_state

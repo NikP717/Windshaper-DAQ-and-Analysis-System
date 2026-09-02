@@ -61,62 +61,68 @@ class ArrayState:
 
     @property 
     def current_avg_upstream_pwm_instr(self) -> np.ndarray:
-        return np.array([fan.target_upstream_pwm for module in self.modules for fan in module.fans]).mean()
+        if self.modules:
+            return np.array([fan.target_upstream_pwm for module in self.modules for fan in module.fans]).mean()
 
     @property
     def current_avg_downstream_pwm_instr(self) -> np.ndarray:
-        return np.array([fan.target_downstream_pwm for module in self.modules for fan in module.fans]).mean()
+        if self.modules:
+            return np.array([fan.target_downstream_pwm for module in self.modules for fan in module.fans]).mean()
 
     @property
     def current_avg_upstream_rpm(self) -> np.ndarray:
-        return np.array([fan.upstream_rpm for module in self.modules for fan in module.fans]).mean()
+        if self.modules:
+            return np.array([fan.upstream_rpm for module in self.modules for fan in module.fans]).mean()
 
     @property
     def current_avg_downstream_rpm(self) -> np.ndarray:
-        return np.array([fan.downstream_rpm for module in self.modules for fan in module.fans]).mean()
+        if self.modules:
+            return np.array([fan.downstream_rpm for module in self.modules for fan in module.fans]).mean()
 
     @property
     def current_std_upstream_rpm(self) -> np.ndarray:
-        return np.array([fan.upstream_rpm for module in self.modules for fan in module.fans]).std()
+        if self.modules:
+            return np.array([fan.upstream_rpm for module in self.modules for fan in module.fans]).std()
     
     @property
     def current_std_downstream_rpm(self) -> np.ndarray:
-        return np.array([fan.downstream_rpm for module in self.modules for fan in module.fans]).std()
+        if self.modules:
+            return np.array([fan.downstream_rpm for module in self.modules for fan in module.fans]).std()
 
     
     def pwm_matrix(self, layer:str="upstream") -> np.ndarray:
         """Function which returns a suitably shaped matrix of PWM states as if user were looking upstream at the windshaper.
         Where the matrix shape represents the true fan wall shape with each fan state being in its appropriate position.
         This is used for live plotting feedback."""
+        if self.modules:
+            matrix = np.zeros(
+                (self.array_fan_rows, self.array_fan_columns)
+            )
 
-        matrix = np.zeros(
-            (self.array_fan_rows, self.array_fan_columns)
-        )
+            for module in self.modules:
+                r = (module.row - 1) * 3
+                c = (module.col - 1) * 3
 
-        for module in self.modules:
-            r = (module.row - 1) * 3
-            c = (module.col - 1) * 3
+                matrix[r:r+3, c:c+3] = module.pwm_matrix(layer)
 
-            matrix[r:r+3, c:c+3] = module.pwm_matrix(layer)
-
-        return matrix
+            return matrix
 
 
     def rpm_matrix(self, layer:str="upstream") -> np.ndarray:
         """Function which returns a suitably shaped matrix of RPM states as if user were looking upstream at the windshaper.
         Where the matrix shape represents the true fan wall shape with each fan state being in its appropriate position.
         This is used for live plotting feedback."""
+        if self.modules:
+            matrix = np.zeros(
+                (self.array_fan_rows, self.array_fan_columns)
+            )
 
-        matrix = np.zeros(
-            (self.array_fan_rows, self.array_fan_columns)
-        )
+            for module in self.modules:
+                r = (module.row - 1) * 3
+                c = (module.col - 1) * 3
 
-        for module in self.modules:
-            r = (module.row - 1) * 3
-            c = (module.col - 1) * 3
-
-            matrix[r:r+3, c:c+3] = module.rpm_matrix(layer)
-        return matrix
+                matrix[r:r+3, c:c+3] = module.rpm_matrix(layer)
+            return matrix
 
     """Functions below act as properties probes draw from to deliver windshape feedback into datasets and live plotting."""
 

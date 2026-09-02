@@ -58,7 +58,7 @@ if __name__ == "__main__":
                 repeat=1,
                 time_crop = (5,35), # OPTIONAL
                 wall=1,
-                profile=Profiles.velocity_control_uniform_flow(9,3,40), # 9 m/s, Turbulence Intensity 5%
+                profile=Profiles.velocity_control_uniform_flow(velocity=9,duration=40,TI=None,spectral_frequency_peaks=None), # 9 m/s, 0 Turbulence
                 measurement_device_dict={'probe_1':NewProbe},
                 controller_feedback_probe_list=['probe_1'],
                 probe_tracking = False, 

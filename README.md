@@ -52,6 +52,12 @@ Currently by default: `AnalyseExperiment.py`, `ConfigureExperiment.py` and `Prof
     The needs to be directly connected to the computer, not through a USB hub.
     This script requires a direct USB connection to the Probe AND a direct LAN connection to the WindShaper, LAN adapters also work here.
 
+# Safety
+**Max PWM Setting**
+A Max PWM can be configured so no instruction force exceeds it on the windshaper, found under models.experiment.ExperimentSafety to modify it.
+**CTRL+C**
+During any experiment CTRL+C will trigger a keyboard interrupt which immediately stops the windshaper.
+
 # Framework Structure
 
 **User Facing Code**
@@ -103,6 +109,7 @@ Currently by default: `AnalyseExperiment.py`, `ConfigureExperiment.py` and `Prof
     `models` -> Where all non-user facing code resides.
     `WINDDATA` -> Where all WindDataSet Instances are stored prior to saving as a configuration series.
     `WINDANALYSIS` -> Where all configuration series are saved.
+    `WINDCALDATA` -> Where all calibrations are stored as JSONS **if you insert this feature into closedloop control** -> currently not in use.
 
 **Data Pipeline and Hierarchy**
     (WindState Feedback + Probe Data) → WindDataset → pkl File in `WINDDATA` 
@@ -146,15 +153,17 @@ Any function which saves plots or exports tables is automatically depositing thi
 
 For more details of analysis see the examples folder for a few examples using sample data from running the repository default experiment code in `WINDANALYSIS`.
 
-You can optionally also export analysis tables and datasets to EXCEL and MATLAB compatible files. (ikr amazing)
+You can optionally also export analysis tables and datasets to EXCEL and MATLAB compatible files.
 
 ## Known Limitations and Future Work
 For future use on any person expanding this repository further. Any contribution is appreciated!!
 
 - Multi device support where devices are identical (e.g two New Probes) has not been tested nor accounted for, something to work on.
+- New Probe Tracking has not been implemented, so will not work (need a specific object name from Motive/Camera Tracking - see TODO in models.WindTracker)
 - Closed loop control only works for the WHOLE fan array, not control of individual fans which is another issue - something to work on.
 - Closed loop control also doesnt have a specific system in place for displaying controller feedback, logical step forward for configuring controllers in future.
-- Calibration is currently not used in ClosedLoopControl due to cross-coupling and non linearity in turbulence not making it forseeable at the minute. 
+- Calibration is currently not used in ClosedLoopControl due to cross-coupling and non linearity in turbulence not making it forseeable at the minute. However all necessary        features are in place for easier implementation (saving and loading from WINDCALDATA exists alongside a velocity calibration and base calibration example.)
+
 - WindAnalysis is an early stage model for future analysis pipelines, could likely become its own folder if expanded on - this framework has not been used much for analysis.
 - SpectralControl and TurbulenceControl has the framework in place, but has not been tuned/adjusted or even fixed framework wise to function efficiently with accuracy.
 - This code has some configuration, profile checking features but potentially is not fully robust.

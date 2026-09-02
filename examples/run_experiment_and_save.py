@@ -68,4 +68,5 @@ if __name__ == "__main__":
     ExperimentRunner.run_configuration(configuration)
 
     name = "test_uniformflow_experiment"
-    ExperimentRunner.save_experiment_series(name)
+    # disabling excel saving reduces visibility of datasets, but it significantly increases save time efficiency.
+    ExperimentRunner.save_experiment_series(name, save_as_excel_too=False) 

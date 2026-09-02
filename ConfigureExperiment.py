@@ -52,6 +52,27 @@ Configuration Arguments:
     You must keep the same meta data format for a given configuration series -> otherwise save experiment series will crash.
 """
 
+"""Baseline configuration series example for testing running and analysis."""
+
 if __name__ == "__main__":
-    # RUN YOUR CONFIGURATION HERE AND SAVE CONFIGURATION IF NEEDED
-    pass
+    # RUN CONFIGURATION SERIES HERE
+    pwms = [10,20,30]
+    repeats = [1, 2]
+    duration = 60
+    for repeat in repeats:
+        for pwm in pwms:
+            configuration = ExperimentConfig(
+                distance_from_wall= 0.85, #m
+                probe_position = (1,1), # any position youd like - just for metadata
+                repeat = repeat,
+                wall = 2,
+                profile = Profiles.uniform_flow(pwm, duration),
+                measurement_device_dict = {"probe_id_1": OldProbe},
+                manual_meta_data={"PWM": pwm},
+                pause_time=5,
+                time_crop = (5, 55), #s
+                live_probe_data = True,
+                live_windshaper_data= True
+            )   
+            ExperimentRunner.run_configuration(configuration)
+    ExperimentRunner.save_configuration_series("Baseline_experiment")

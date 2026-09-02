@@ -45,8 +45,8 @@ class WindTracker():
         self.is_tracking = False
         self.tracking_fail_notification = False
 
-        # TODO: UPDATE THIS FRAMEWORK TO WORK FOR NEW ID SYSTEM BECAUSE IM PRETTY SURE I CHANGED IT AND THIS WILL THROW AN ERROR.
-        if active_probe_instance.ID == 1: # Old probe hard coded ID
+        # TODO: MAKE THIS WORK FOR NEWPROBE - HAVENT BEEN ABLE TO TEST
+        if active_probe_instance.tracking_ID == 1: # Old probe hard coded ID
             self.track_obj_name = "windprobold_e"
         else:
             self.track_obj_name = "" # TEMP UNTIL NEW PROBE
