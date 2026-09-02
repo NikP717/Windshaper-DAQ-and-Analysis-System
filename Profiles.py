@@ -141,10 +141,10 @@ def sine_checkered_array(upstream_sine_amp_1, downstream_sine_amp_1, upstream_si
         return intensity
 
     profile.at_time(0,
-                    FanCommand(selection=checkered_1_up,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=upstream_sine_function_1)),
-                    FanCommand(selection=checkered_2_up,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=upstream_sine_function_2)),
-                    FanCommand(selection=checkered_1_down,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=downstream_sine_function_1)),
-                    FanCommand(selection=checkered_2_down,instruction=FanInstruction(mode_type=ControlMode.PWM,pwm_wind_function=downstream_sine_function_2))
+                    FanCommand(selection=checkered_1_up,instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=upstream_sine_function_1)),
+                    FanCommand(selection=checkered_2_up,instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=upstream_sine_function_2)),
+                    FanCommand(selection=checkered_1_down,instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=downstream_sine_function_1)),
+                    FanCommand(selection=checkered_2_down,instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=downstream_sine_function_2))
                     )
     return profile.build(name)
 
