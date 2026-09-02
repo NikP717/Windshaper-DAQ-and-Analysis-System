@@ -9,6 +9,10 @@ from pathlib import Path
 import numpy as np
 from scipy import stats
 import math
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class VelocityCalibration(BaseCalibration):
     def __init__(self, config: ExperimentConfig) -> None:
@@ -122,7 +126,7 @@ class VelocityCalibration(BaseCalibration):
         )
 
         ExperimentRunner.run_configuration(calib_config) # nested experiment runner ik insane
-        print("[CALIBRATION] Calibration complete.")
+        logger.info("Calibration complete.")
 
     def _isolate_single_device_dict(self) -> None:
         dict = self.config.measurement_device_dict

@@ -5,7 +5,6 @@ from models.controllers.PIDController import PIDController
 from models.wind.WindProfileBuilder import Vel
 from models.data.ProbeFeedbackState import ProbeFeedbackState
 from models.calibration.CalibrationManager import CalibrationManager
-from models.calibration.TurbulenceCalibration import TurbulenceCalibration
 from models.data.ControlFeedbackState import ControlFeedbackState
 from models.experiment.ExperimentConfig import ExperimentConfig
 

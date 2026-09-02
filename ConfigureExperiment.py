@@ -6,7 +6,6 @@ from models.devices.SimProbe import SimProbe
 from models.wind.WindProfileBuilder import SpectralContent
 import Profiles
 import time
-from models.calibration.TurbulenceCalibration import TurbulenceCalibration
 
 """
 Configuration Arguments:
@@ -52,7 +51,7 @@ Configuration Arguments:
     You must keep the same meta data format for a given configuration series -> otherwise save experiment series will crash.
 """
 
-"""Baseline configuration series example for testing running and analysis."""
+"""Baseline configuration series example for testing running and analysis"""
 
 if __name__ == "__main__":
     # RUN CONFIGURATION SERIES HERE
@@ -67,7 +66,7 @@ if __name__ == "__main__":
                 repeat = repeat,
                 wall = 2,
                 profile = Profiles.uniform_flow(pwm, duration),
-                measurement_device_dict = {"probe_id_1": OldProbe},
+                measurement_device_dict = {"probe_id_1": NewProbe},
                 manual_meta_data={"PWM": pwm},
                 pause_time=5,
                 time_crop = (5, 55), #s

@@ -6,6 +6,9 @@ from pathlib import Path
 import json
 from datetime import datetime
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CalibrationManager():
     def __init__(self, config: ExperimentConfig, calibration_type: type[BaseCalibration]) -> None:
@@ -14,10 +17,10 @@ class CalibrationManager():
         self.calibration_data = None
 
     def determine_calibration(self) -> None:
-        print("[CALBIRATION] Velocity input detected, checking existing calibrations...")
+        logger.info("Velocity input detected, checking existing calibrations...")
         self._check_existing_calibrations()
         if not self.calibration_data:
-            print("[CALBIRATION] No calibration exists for this configuration (using probe_pos, wall, distance_from_wall), starting calibration sequence.")
+            logger.info("No calibration exists for this configuration (using probe_pos, wall, distance_from_wall), starting calibration sequence.")
             time.sleep(2)
             self._create_new_calibration()
 
