@@ -1,3 +1,4 @@
+NOTE: See Raw format for clearer code structure view.
 # Purpose
 This Python framework provides a layered and modular workflow for automated wind-tunnel experimentation using the WindShape WindShaper through the WindSuite SDK. It provides configurable experiment definition, wind-profile generation, data acquisition, control, calibration and structured data analysis.
 
