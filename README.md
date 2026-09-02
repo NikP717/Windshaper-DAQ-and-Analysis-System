@@ -12,7 +12,7 @@ Nicholas Pedzik 03/09/2026
 3. Open a terminal in the repository directory.
 4. Run:
 
-uv run python -i ConfigureExperiment.py OR press RUNSCRIPT.bat
+`uv run python -i ConfigureExperiment.py` OR press `RUNSCRIPT.bat`
 
 5. Follow the example configuration to create and execute an experiment.
 6. Experimental data will be stored in `WINDDATA`. (Occurs within default ConfigureExperiment Script)

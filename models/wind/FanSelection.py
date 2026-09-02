@@ -7,7 +7,7 @@ class FanSelection:
     In addition to WindSuite SDK features, it also includes fan_rows and fan_columns selection functionality (SDK only has module row/columns as of 01/09/26)."""
     fan_rows: Optional[list[int]] = None
     module_rows: Optional[list[int]] = None
-    fan_columns: Optional[list[int]] = None
+    fans: Optional[list[int]] = None
     module_columns: Optional[list[int]] = None
     fans: Optional[list[int]] = None
     layer: Optional[str] = None

@@ -50,72 +50,8 @@ Configuration Arguments:
 
     If no manual meta data is provided the system will provide an automated one based on PWM or wind function frequency depending on scenario.
     You must keep the same meta data format for a given configuration series -> otherwise save experiment series will crash.
-
-
 """
 
-#%% LOOP THROUGH CONFIGURATIONS HERE
-# velocity_control_uniform_flow(10,5,300)
-# configuration = ExperimentConfig(
-#             pause_time=0,
-#             distance_from_wall=0.85,
-#             probe_position= (0,0),
-#             repeat=1,
-#             time_crop = (60,180), # OPTIONAL
-#             wall=2,
-#             profile=Profiles.velocity_control_uniform_flow(9,5,190),
-#             controller_feedback_probe_list=['probe_1'],
-#             manual_meta_data=None,
-#             measurement_device_dict={'probe_1':OldProbe},
-#             probe_tracking = False, 
-#             live_probe_data = True,
-#             live_windshaper_data = True
-#         )
-
-
 if __name__ == "__main__":
-    # velocity = [5.3, 7.2, 6.3, 8.3]
-    # turbulence = [3.5, 4.3, 5.2, 7.1]
-    velocity = [8]
-    turbulence = [5]
-    for v,t in zip(velocity, turbulence):
-        configuration = ExperimentConfig(
-        pause_time = 10,
-        distance_from_wall = 0.85,
-        probe_position=(0,0),
-        measurement_device_dict={'probe_01': OldProbe},
-        controller_feedback_probe_list=['probe_01'],
-        repeat=1,
-        time_crop=(60,180),
-        manual_meta_data={"applied velocity": v, "applied TI": t},
-        wall=2,
-        profile=Profiles.velocity_control_uniform_flow(v, 180, t),
-        live_probe_data=True,
-        live_windshaper_data=True
-        )
-        ExperimentRunner.run_configuration(configuration)
-    # frequency = 0.3
-    # duration = 70
-    # amplitudes = [5,10,15]
-    # averages = [30,40,50]
-    # for pwm_amp in (amplitudes):
-    #     for pwm_base in averages:
-    #         configuration = ExperimentConfig(
-    #             pause_time = 10,
-    #             distance_from_wall = 0.85,
-    #             probe_position=(0,0),
-    #             measurement_device_dict={'probe_01': OldProbe},
-    #             controller_feedback_probe_list=['probe_01'],
-    #             repeat=1,
-    #             time_crop=(10,60),
-    #             manual_meta_data={"amplitude_pwm": pwm_amp, "baseline_pwm": pwm_base},
-    #             wall=2,
-    #             profile=Profiles.turbulence_response(pwm_base, pwm_amp, frequency, duration),
-    #             live_probe_data=True,
-    #             live_windshaper_data=True
-    #             )
-    #         ExperimentRunner.run_configuration(configuration)
-    # name = "test_spectral"
-    # ExperimentRunner.save_configuration_series(name) # OPTIONAL
-
-# %%
+    # RUN YOUR CONFIGURATION HERE AND SAVE CONFIGURATION IF NEEDED
+    pass
