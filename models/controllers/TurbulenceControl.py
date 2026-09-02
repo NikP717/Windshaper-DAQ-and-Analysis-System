@@ -48,7 +48,7 @@ class TurbulenceControl():
         print(f"TURBULENCE: {current_TI_measurement:.2f} - TARGET: {ControlFeedbackState.target_TI}")
 
     def refresh_controller(self) -> None:
-        self.controller = PIDController(200,0,0,lim=(-30,30))
+        self.controller = PIDController(self.KP,self.KI,self.KD,lim=(-30,30))
 
     def _get_probe_windspeed(self) -> float:
         """Helper function which obtains the currently selected velocity component probe velocity."""

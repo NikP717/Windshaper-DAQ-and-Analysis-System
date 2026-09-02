@@ -27,8 +27,8 @@ class TurbulenceSpectralControl():
             0.40: 1,
             0.45: 1,
             0.50: 1,
-            0.55: 2,
-            0.60: 2
+            0.55: 1,
+            0.60: 1
         }
 
         self.statistics = SpectralAmplitudeStats(self._get_frequency_list(), self.SPECTRAL_TAU, self.MEAN_TAU, dt=0.01)
@@ -51,16 +51,6 @@ class TurbulenceSpectralControl():
             if sines is not None:
                 cmd = new_abs_amplitudes[sines.frequency]  * self.ADDIT_FQ_GAIN_DICT[sines.frequency]
                 sines.update_amplitude(max(0.0, cmd))
-                # print(f"FQ: {sines.frequency:.2f}, REL AMP: {self.statistics.relative_amplitude(sines.frequency):.2f}, TARGET REL AMP: {sines.target_relative_amplitude:.2f}")
-
-        print(
-        f"[FQ {sines.frequency:.2f}] "
-        f"target_abs={sines.target_absolute_amplitude:.4f} | "
-        f"measured={measurement:.4f} | "
-        f"rawPID={raw_amplitude_correction:.4f} | "
-        f"cmd={cmd:.4f} | "
-        f"rel={self.statistics.relative_amplitude(sines.frequency):.4f} | "
-        f"target_rel={sines.target_relative_amplitude:.4f}")
 
     def refresh_controller(self) -> None:
         self._assign_sine_controllers()

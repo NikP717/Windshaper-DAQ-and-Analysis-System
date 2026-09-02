@@ -190,6 +190,7 @@ def turbulence_response(average_pwm, amplitude_pwm, frequency, duration):
 
     return profile.build(name)
 
+
 """VELOCITY BASED PROFILES"""
 
 def velocity_control_uniform_flow(velocity, duration, TI = None,  spectral_frequency_peaks: None | SpectralContent = None):

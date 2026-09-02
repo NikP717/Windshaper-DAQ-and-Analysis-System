@@ -66,7 +66,7 @@ if __name__ == "__main__":
                 repeat = repeat,
                 wall = 2,
                 profile = Profiles.uniform_flow(pwm, duration),
-                measurement_device_dict = {"probe_id_1": NewProbe},
+                measurement_device_dict = {"probe_id_1": OldProbe},
                 manual_meta_data={"PWM": pwm},
                 pause_time=5,
                 time_crop = (5, 55), #s

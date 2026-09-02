@@ -3,7 +3,7 @@ NOTE: See Raw format for clearer code structure view.
 This Python framework provides a layered and modular workflow for automated wind-tunnel experimentation using the WindShape WindShaper through the WindSuite SDK. It provides configurable experiment definition, wind-profile generation, data acquisition, control, calibration and structured data analysis.
 
 # Credits
-Nicholas Pedzik 03/09/2026
+Nicholas Pedzik 02/09/2026
 `windprobe_api` WindProbe API: Copyright (C)2018-2022 WindShape Ltd - All Rights Reserved, Old Probe API 
 
 # Quick Start
@@ -110,6 +110,9 @@ During any experiment CTRL+C will trigger a keyboard interrupt which immediately
     `WINDDATA` -> Where all WindDataSet Instances are stored prior to saving as a configuration series.
     `WINDANALYSIS` -> Where all configuration series are saved.
     `WINDCALDATA` -> Where all calibrations are stored as JSONS **if you insert this feature into closedloop control** -> currently not in use.
+
+**Controllers**
+Controller gains can be configured within models.controllers.VelocityControl,TurbulenceSpectralControl and TurbulenceControl.
 
 **Data Pipeline and Hierarchy**
     (WindState Feedback + Probe Data) → WindDataset → pkl File in `WINDDATA` 
