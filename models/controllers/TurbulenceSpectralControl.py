@@ -9,67 +9,89 @@ import numpy as np
 class TurbulenceSpectralControl():
     """Class which controls sine amplitudes based on total turbulence PWM setting within ControlFeedbackState: Takes user inputs to generate
     custom spectral peaks, if no peaks will generate a uniform discrete spectrum distribution"""
-    def __init__(self):
-        # Spectral amplitude adjustment controller (12 controllers)
-        self.KP = 30
+    def __init__(self) -> None:
+        self.KP = 0.8
         self.KI = 0
         self.KD = 0
-        self.TAU = 20
+        self.SPECTRAL_TAU = 50
+        self.MEAN_TAU = 2
 
-        self.FQ_ATTENUATION_COMPENSATION_FACTOR = 1
+        self.ADDIT_FQ_GAIN_DICT = {
+            0.05: 1,
+            0.10: 1,
+            0.15: 1,
+            0.20: 1,
+            0.25: 1,
+            0.30: 1,  
+            0.35: 1,
+            0.40: 1,
+            0.45: 1,
+            0.50: 1,
+            0.55: 2,
+            0.60: 2
+        }
 
-        self.statistics = SpectralAmplitudeStats(self._get_frequency_list(), self.TAU, dt = 0.01)
+        self.statistics = SpectralAmplitudeStats(self._get_frequency_list(), self.SPECTRAL_TAU, self.MEAN_TAU, dt=0.01)
 
     def update(self) -> None:
         current_velocity = self._get_probe_windspeed()
         self.statistics.update(current_velocity, ControlFeedbackState.dt)
-        new_rel_amplitudes = {}
+        self._generate_absolute_amplitude_targets()
+
+        new_abs_amplitudes = {}
         for sines in ControlFeedbackState.frequency_band_sines:
             if sines is not None:
-                target = sines.target_amplitude
-                measurement = self.statistics.relative_amplitude(sines.frequency)
+                target = sines.target_absolute_amplitude
+                measurement = self.statistics.amplitude(sines.frequency)
                 controller = sines.controller
                 raw_amplitude_correction = controller.update(target, measurement, ControlFeedbackState.dt)
-                new_rel_amplitudes[sines.frequency] = (raw_amplitude_correction + sines.amplitude) #*(sines.frequency-0.05)/0.05*self.FQ_ATTENUATION_COMPENSATION_FACTOR
-                # if sines.frequency == 0.6 or sines.frequency == 0.05:
-                #     print(f"SINE FQ: {sines.frequency}, TARGET REL A: {sines.target_amplitude:.3f}, ACTUAL REL A: {measurement:.3f}, REL AMP INSTR: {raw_amplitude_correction + sines.amplitude}")
-
-        total_turbulence_pwm = ControlFeedbackState.baseline_turbulence_pwm + ControlFeedbackState.correction_turbulence_pwm
-        # Ensures total control action is distributed such that total turbulence is unchanged
-        total_relative_amplitude = np.sqrt(sum(amplitude**2 for amplitude in new_rel_amplitudes.values()))
-        amplitude_ratio = total_turbulence_pwm / total_relative_amplitude
-        print(
-    "TOTAL PWM:", total_turbulence_pwm,
-    "VECTOR RMS:", total_relative_amplitude * amplitude_ratio,
-    "AMPLITUDES:",
-    {round(k, 2): round(v, 2)
-     for k, v in new_rel_amplitudes.items()}
-)
+                new_abs_amplitudes[sines.frequency] = (raw_amplitude_correction + sines.amplitude)
 
         for sines in ControlFeedbackState.frequency_band_sines:
             if sines is not None:
-                sines.update_amplitude(new_rel_amplitudes[sines.frequency] * amplitude_ratio)
+                cmd = new_abs_amplitudes[sines.frequency]  * self.ADDIT_FQ_GAIN_DICT[sines.frequency]
+                sines.update_amplitude(max(0.0, cmd))
+                # print(f"FQ: {sines.frequency:.2f}, REL AMP: {self.statistics.relative_amplitude(sines.frequency):.2f}, TARGET REL AMP: {sines.target_relative_amplitude:.2f}")
 
-    def refresh_controller(self):
+        print(
+        f"[FQ {sines.frequency:.2f}] "
+        f"target_abs={sines.target_absolute_amplitude:.4f} | "
+        f"measured={measurement:.4f} | "
+        f"rawPID={raw_amplitude_correction:.4f} | "
+        f"cmd={cmd:.4f} | "
+        f"rel={self.statistics.relative_amplitude(sines.frequency):.4f} | "
+        f"target_rel={sines.target_relative_amplitude:.4f}")
+
+    def refresh_controller(self) -> None:
         self._assign_sine_controllers()
         if hasattr(ControlFeedbackState, 'target_spectral_content'):
             ControlFeedbackState.set_target_spectrum()
         else:
             ControlFeedbackState.set_target_spectrum(self._generate_uniform_spectral_instr())
 
-    def _assign_sine_controllers(self):
+    def _generate_absolute_amplitude_targets(self) -> None:
+        total_pwm = ControlFeedbackState.baseline_turbulence_pwm + ControlFeedbackState.correction_turbulence_pwm
+
+        rel = [sines.target_relative_amplitude for sines in ControlFeedbackState.frequency_band_sines if sines is not None]
+        norm = math.sqrt(sum(r*r for r in rel))
+
+        for sines in ControlFeedbackState.frequency_band_sines:
+            if sines is not None:
+                sines.target_absolute_amplitude = (sines.target_relative_amplitude / norm) * total_pwm
+
+    def _assign_sine_controllers(self) -> None:
         for sines in ControlFeedbackState.frequency_band_sines:
             if sines is not None:
                 sines.set_controller(self.KP, self.KI, self.KD)
 
-    def _generate_uniform_spectral_instr(self):
+    def _generate_uniform_spectral_instr(self) -> None:
         frequency_list = self._get_frequency_list()
         new_spectrum = SpectralContent(frequency_amplitude_dict={})
         for fq in frequency_list:
             new_spectrum.frequency_amplitude_dict[fq] = 1
         return new_spectrum
 
-    def _get_frequency_list(self):
+    def _get_frequency_list(self) -> None:
         frequency_list = []
         for sines in ControlFeedbackState.frequency_band_sines:
             if sines is not None:
@@ -84,68 +106,64 @@ class TurbulenceSpectralControl():
             return ProbeFeedbackState.windspeed_y
         if v_component == Vel.Z:
             return ProbeFeedbackState.windspeed_z
-
+        
 class SpectralAmplitudeStats:
-    """Exponential Moving Average of amplitudes at each frequency of interest, 
-    uses cosine and sine functions to estimate amplitude at each specified frequency by fitting them to the signal on a rolling basis."""
-    # NOTE: Mathematics generated by AI 
-    def __init__(self, frequencies, tau, dt):
+    """Class which is utilised by TurbulenceSpectralControl to determine currently cos and sin fitted spectral absolute and relative amplitude.
+    NOTE: TBC on accuracy, mathematics supported by AI."""
+    def __init__(self, frequencies: list, spectral_tau: float, mean_tau: float, dt: float) -> None:
+        """Initialises gains, sin and cos frequency array and alpha coefficients."""
         self.frequencies = frequencies
-        self.dt = dt
-        self.tau = tau
-        self.alpha = math.exp(-dt / tau)
-
+        self.spectral_tau = spectral_tau
+        self.mean_tau = mean_tau
+        self.spectral_alpha = math.exp(-dt / spectral_tau)
+        self.mean_alpha = math.exp(-dt / mean_tau)
         self.cos = {frequency: 0.0 for frequency in frequencies}
         self.sin = {frequency: 0.0 for frequency in frequencies}
+        self.mean = None
         self.time = 0.0
         self.initialised = False
 
-    def update(self, x, dt):
-        self.dt = dt
-        self.alpha = math.exp(-dt / self.tau)
+    def update(self, x: float, dt: float) -> None:
+        self.spectral_alpha = math.exp(-dt / self.spectral_tau)
+        self.mean_alpha = math.exp(-dt / self.mean_tau)
 
         if math.isnan(x):
             self.time += dt
             return
 
+        if self.mean is None:
+            self.mean = x
+            self.time += dt
+            return
+
+        self.mean = self.mean_alpha * self.mean + (1 - self.mean_alpha) * x
+
         for frequency in self.frequencies:
             phase = 2 * math.pi * frequency * self.time
-
-            self.cos[frequency] = (
-                self.alpha * self.cos[frequency]
-                + (1 - self.alpha) * x * math.cos(phase)
-            )
-
-            self.sin[frequency] = (
-                self.alpha * self.sin[frequency]
-                + (1 - self.alpha) * x * math.sin(phase)
-            )
+            self.cos[frequency] = self.spectral_alpha * self.cos[frequency] + (1 - self.spectral_alpha) * x * math.cos(phase)
+            self.sin[frequency] = self.spectral_alpha * self.sin[frequency] + (1 - self.spectral_alpha) * x* math.sin(phase)
 
         self.time += dt
         self.initialised = True
 
-    def amplitude(self, frequency):
+    def amplitude(self, frequency: float) -> float:
         if not self.initialised:
             return 0.0
 
-        cos_component = self.cos[frequency]
-        sin_component = self.sin[frequency]
+        return 2 * math.sqrt(self.cos[frequency] ** 2 + self.sin[frequency] ** 2)
 
-        return 2 * math.sqrt(
-            cos_component**2 + sin_component**2
-        )
-
-    def relative_amplitude(self, frequency):
-        amplitudes = {
-            f: self.amplitude(f)
-            for f in self.frequencies
-        }
-
-        total = math.sqrt(
-            sum(amplitude**2 for amplitude in amplitudes.values())
-        )
+    def relative_amplitude(self, frequency: float) -> float:
+        amplitudes = {f: self.amplitude(f) for f in self.frequencies}
+        total = math.sqrt(sum(amplitude ** 2 for amplitude in amplitudes.values()))
 
         if total == 0:
             return 0.0
 
         return amplitudes[frequency] / total
+
+    def reset(self) -> None:
+        self.cos = {frequency: 0.0 for frequency in self.frequencies}
+        self.sin = {frequency: 0.0 for frequency in self.frequencies}
+        self.mean = None
+        self.time = 0.0
+        self.initialised = False

@@ -1,5 +1,8 @@
 class DataColumns:
-    PROBE_COLUMNS = [ # changing these means you have to change what WindController outputs and what Old/New WindProbeManager reads
+    """Class Which acts as storage and reference of all the columns ExperimentSeriesDataSet generates and what WindDataset uses.
+    Columns are fully modifiable however follow the comments to ensure no data storage is broken if edited."""
+
+    PROBE_COLUMNS = [ # changing these means you have to change what WindController outputs and what Old/New/Sim WindProbeManager reads
         "time_s",
         "windspeed_x",
         "windspeed_y",

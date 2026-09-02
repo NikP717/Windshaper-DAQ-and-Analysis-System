@@ -5,12 +5,18 @@ import numpy as np
 from statsmodels.tsa.stattools import adfuller
 from datetime import datetime
 import pickle
-
 from typing import Self
+import logging
+
 from models.data.DataColumns import DataColumns
 
+logger = logging.getLogger(__name__)
+
 class WindDataset:
+    """Class which stores inputted buffered data from DeviceManager writing thread and formats it within a pandas dataframe.
+    Class also post-processes summary data and saves by default to WINDDATA. A row of winddata is a single sample from the probe."""
     def __init__(self, manual_meta: bool = False) -> None:
+        """Initialises columns, metadata and summary datasets."""
         self.probe_columns = DataColumns.PROBE_COLUMNS
         self.meta_columns = DataColumns.META_COLUMNS
         self.summary_columns = DataColumns.SUMMARY_COLUMNS
@@ -31,16 +37,20 @@ class WindDataset:
         # Flag
         self.cropped_status = False
 
-        # Summary Data Analysis Parameters - currently hardcoded
+        # NOTE: Summary Data Analysis Parameters - currently hardcoded
         self.rolling_window_seconds = 3
         self.max_lag_seconds = 10
         self.convection_speed = None
     
     def set_meta_data(self,meta_data_row: list) -> None:
+        """Function which sets the meta dataset for Winddata."""
         self.meta_data.loc[len(self.meta_data)] = meta_data_row
     
     def store_buffered_probe_data(self,buffer_data: list):
-        if self.cropped_status: # prevent buffer data being stored after the data has been cropped in event of remaining buffers
+        """Function which converts inputted buffer data and transfers it to a new sample row in Winddataset."""
+        if self.cropped_status: 
+            # prevent buffer data being stored after the data has been cropped in event of remaining buffers
+            # NOTE: I feel as if this is a temporary solution to a different problem of buffer writing thread not merging properly but not addressed yet.
             return
         new_rows = pd.DataFrame(buffer_data, columns=self.probe_data.columns)
         # fix any errors in data
@@ -48,36 +58,44 @@ class WindDataset:
             new_rows[col] = pd.to_numeric(new_rows[col], errors="coerce")
         self.probe_data = pd.concat([self.probe_data, new_rows], ignore_index=True)
 
-    def crop_data_time(self,timeframe: tuple) -> None:
+    def crop_data_time(self, timeframe: tuple) -> None:
+        """Function which uses experiment configuration specified timeframes and cuts the data to that specification."""
         self.cropped_status = True
         df = self.probe_data
-        init_time = timeframe[0] if (timeframe and len(timeframe) > 0) else None
-        final_time = timeframe[1] if (timeframe and len(timeframe) > 1) else None
-
-        if not init_time:
-            init_time = 0
-        if not final_time:
-            final_time = df['time_s'].max()
-
+        init_time = timeframe[0]
+        final_time = timeframe[1]
         cropped_probe_data = df[(df['time_s'] >= init_time) & (df['time_s'] <= final_time)]
         self.probe_data = cropped_probe_data
 
     def _generate_summary_data(self) -> None:
-        # 4 sub functions below modified from Reda Snaiki 3D Analysis Code.
+        """Function which populates summary datasets using existing time-cropped stored probe dataset.
+        Calculates:
+        - Mean velocity in all axis.
+        - Standard deviation of velocity in all axis.
+        - Sampling frequency. (not stored in data).
+        - Turbulence intensity in all axis and 3D Turbulence intensity.
+        - Signal stationarity (see function calculating below for more details.)"""
+
+        # Clear all summary datasets in event of remaining data.
         self.summary_data_x = self.summary_data_x.iloc[0:0]
         self.summary_data_y = self.summary_data_y.iloc[0:0]
         self.summary_data_z = self.summary_data_z.iloc[0:0]
-        self.summary_data_3d = self.summary_data_3d.iloc[0:0] # clear all datasets keep the columns
+        self.summary_data_3d = self.summary_data_3d.iloc[0:0] 
         summary_row_x = []
         summary_row_y = []
         summary_row_z = []
         summary_row_3d = []
+
+        # Probe data for calculations
         time = self.probe_data['time_s']
         ux = self.probe_data['windspeed_x']
         uy = self.probe_data['windspeed_y']
         uz = self.probe_data['windspeed_z']
+
         fq_sampling = self._get_sampling_frequency(time)
         statistics_3d = self._basic_component_statistics(ux,uy,uz)
+
+        # Ugly for loop which stores all summary statistics
         for components, summary_rows in zip(["x","y","z","3d"],[summary_row_x,summary_row_y,summary_row_z,summary_row_3d]):
             if components != "3d":
                 summary_rows.append(statistics_3d[f'U{components}'])
@@ -87,12 +105,13 @@ class WindDataset:
                 summary_rows.append(statistics_3d[f"Umag"])
                 summary_rows.append(statistics_3d[f"sig3d"]) 
                 summary_rows.append(statistics_3d[f"TI3D"])
-                
+
+        # Ugly for loop which calculates and stores all stationarity checks on signal.
         for velocities, summary_rows,components in zip([ux,uy,uz],[summary_row_x,summary_row_y,summary_row_z],["x","y","z"]):
             rmv, rsv, adf = self._stationarity_check(velocities, fq_sampling)
             summary_rows.extend([rmv,rsv,adf])
 
-        summary_row_3d.extend([0,0,0]) # not sure if we can plot additional values for 3d yet ************
+        summary_row_3d.extend([0,0,0]) # TODO: not sure if we can plot additional values for 3d yet, zeroed by default for now.
 
         # Write to data sets
         new_row_x = pd.DataFrame([summary_row_x], columns=self.summary_columns)
@@ -105,6 +124,8 @@ class WindDataset:
         self.summary_data_3d = pd.concat([self.summary_data_3d, new_row_3d], ignore_index=True)
 
     def compact_data_to_row(self) -> list:
+        """Function which is utilised by ExperimentSeriesDataSet to compact all WindDataSet data into a single row.
+        This is for hierarchal data arrangement where prior to this function one row is one sample, afterwards one row is one dataset."""
         row_values = []
         if len(self.meta_data) > 0:
             row_values.extend(self.meta_data.iloc[-1].tolist())
@@ -119,7 +140,7 @@ class WindDataset:
         return row_values
 
     def save_obj(self) -> None:
-        """Saves object class as a pickle instance"""
+        """Function which saves object class as a pickle instance"""
         project_dir = Path(__file__).resolve().parent.parent.parent
         metadata_values = self.meta_data.iloc[0]
         output_dir = project_dir / "WINDDATA" 
@@ -134,12 +155,13 @@ class WindDataset:
 
     @classmethod
     def load(cls,path: Path) -> Self:
-        """Loads complete dataset object"""
+        """Function which loads complete Winddataset object from a pkl file in WINDDATA."""
         with open(path, "rb") as file:
             loaded_object = pickle.load(file)
             return loaded_object
 
-    def save_to_xl(self) -> Path: # DEFAULT PATH IS TO WINDDATA
+    def save_to_xl(self) -> Path: 
+        """Function which saves winddataset to an excel file in WINDDATA."""
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDDATA" 
         metadata_values = self.meta_data.iloc[0]
@@ -162,6 +184,7 @@ class WindDataset:
 
     @classmethod
     def load_from_xl(cls, path: Path) -> Self: # NO DEFAULT PATH
+        """Class function which loads a WindDataSet excel file into a WindDataSet instance."""
         new_data_obj = cls()
         excel_data = pd.read_excel(path, sheet_name=None)
         new_data_obj.meta_data = excel_data.get("meta_data")
@@ -172,19 +195,17 @@ class WindDataset:
         new_data_obj.summary_data_3d = excel_data.get("summary_data_3d")
         return new_data_obj
     
-    # REDA SNAIKI FUNCTIONS FOR ANALYSIS BELOW SLIGHTLY MODIFIED FOR CLASS FUNCTION
     def _get_sampling_frequency(self, time: np.ndarray) -> float:
+        """Helper function which obtains and reports to user on the probes sampling frequency."""
         dt = np.median(np.diff(time))
         if not np.isfinite(dt) or dt <= 0:
             return 0
         fs_hz = 1.0 / dt
-        print(f"[WINDDATA] Achieved Sampling Frequency: {fs_hz:.2f}Hz, Probe ID: {self.meta_data['probe_id'].iloc[0]}")
+        logger.info(f"Achieved Sampling Frequency: {fs_hz:.2f}Hz, Probe ID: {self.meta_data['probe_id'].iloc[0]}")
         return fs_hz
     
     def _basic_component_statistics(self, ux, uy, uz) -> tuple[float, ...]:
-        """
-        Calculate means, fluctuations, standard deviations, and turbulence intensities.
-        """
+        """Function which calculate means, fluctuations, standard deviations, and turbulence intensities and handles edge cases."""
 
         ux = pd.to_numeric(ux, errors="coerce").fillna(0).to_numpy()
         uy = pd.to_numeric(uy, errors="coerce").fillna(0).to_numpy()
@@ -218,9 +239,12 @@ class WindDataset:
         }
     
     def _stationarity_check(self,velocity_signal: np.ndarray, fs_hz: float) -> tuple[float, ...]:
-        """
-        Rolling mean and rolling standard deviation, plus optional ADF test.
-        """
+        """Rolling mean and rolling standard deviation, plus optional ADF test.
+        NOTE: This function was provided by Assistant Prof. Reda Snaiki (and likely AI Generated)
+        
+        Generates a P value for certainty of the stationary of the signal, if velocity is not steady P value will tend to be larger.
+        (atleast it should - not tested thoroughly)"""
+
         velocity_signal = np.nan_to_num(velocity_signal, nan=0.0)
         window = max(int(self.rolling_window_seconds * fs_hz), 5)
         s = pd.Series(velocity_signal)

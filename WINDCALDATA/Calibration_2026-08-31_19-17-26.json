@@ -1,0 +1,15 @@
+{
+    "wall": 2,
+    "distance_from_wall": 0.85,
+    "probe_position": [
+        0,
+        0
+    ],
+    "x_gain": -0.04465819875630894,
+    "y_gain": -0.01968990141287155,
+    "z_gain": -0.0183833329415126,
+    "x_intercept": 0.15934276807105657,
+    "y_intercept": 0.03544027098580135,
+    "z_intercept": 0.04478330494646213,
+    "label": "turbulence_cal"
+}

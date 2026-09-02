@@ -4,20 +4,21 @@ from models.data.ProbeFeedbackState import ProbeFeedbackState
 from models.data.ControlFeedbackState import ControlFeedbackState
 
 class VelocityControl():
-    def __init__(self):
-        # Note: Currently External integrated controller
+    """Class which controls mean velocity under ClosedLoopControl with a single externally integrated PID Controller."""
+    def __init__(self) -> None:
         self.KP = 0.1
         self.KI = 0
         self.KD = 0.015
         
         self.controller = None
 
-    def update(self):
+    def update(self) -> None:
+        """Function which updates controller correction in ControlFeedbackState"""
         current_velocity = self._get_probe_windspeed()
         correction_pwm = self.controller.update(ControlFeedbackState.target_velocity, current_velocity, ControlFeedbackState.dt) 
         ControlFeedbackState.mean_velocity_pwm += correction_pwm # external integrated controller
 
-    def refresh_controller(self):
+    def refresh_controller(self) -> None:
         self.controller = PIDController(self.KP, self.KI, self.KD)
 
     def _get_probe_windspeed(self) -> float:

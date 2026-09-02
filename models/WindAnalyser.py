@@ -8,21 +8,32 @@ import regex as re
 import scipy.io as sio
 
 class WindAnalyser:
+    """Class which acts as a method storage and also current analysis storage.
+    Enables the user to easily analyse datasets stored within WINDANALYSIS without having to worry about paths of files.
+    Enables user to easily load/save user made datasets from analysis and save figures without worrying about paths of files.
+
+    Best way to understand this class is to see .examples.
+    
+    NOTE: Due to my own limited personal analysis, this class has much room for 
+    improvement for accessibility/functionality and could probably form a models.analysis folder in the future"""
+
     experiment_name = ""
     @classmethod
     def _check_experiment_set(cls) -> None:
+        """Helper function which checks if an experiment dataset is loaded prior to usage."""
         if not cls.experiment_name:
             raise ValueError("No Experiment Loaded, have you used load_experiment_dataset?")
         
     @classmethod
     def _locate_working_directory(cls) -> Path:
+        """Helper function which locates the working directory of the experiment refererenced by the analyser."""
         project_dir = Path(__file__).resolve().parent.parent
         data_dir = project_dir / "WINDANALYSIS" / cls.experiment_name
         return data_dir
 
     @classmethod
     def load_experiment_dataset(cls,experiment_name: str) -> pd.DataFrame:
-        """Converts Pickle file into pandas dataset of folder named experiment in WINDANALYSIS"""
+        """Function which converts Pickle file into pandas dataset of folder named experiment in WINDANALYSIS"""
         cls.experiment_name = experiment_name
         dir = cls._locate_working_directory()
         data_dir = dir / f"{experiment_name}.pkl"
@@ -31,6 +42,7 @@ class WindAnalyser:
 
     @staticmethod
     def _mean_mixed(series) -> float: # for column averaging
+        """Helper function which averages mixed data (listed cells and float cells)"""
         first_val = series.iloc[0]
         #  list inside the cell (for listed vars)
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
@@ -43,6 +55,7 @@ class WindAnalyser:
 
     @staticmethod
     def _std_mixed(series) -> float: # for creating standard deivation columns
+        """Helper function which finds the std of mixed data (listed cells and float cells)"""
         first_val = series.iloc[0]
         if isinstance(first_val, (list, np.ndarray, pd.Series)):
             arrays = [np.asarray(v, dtype=float) for v in series]
@@ -53,7 +66,7 @@ class WindAnalyser:
     
     @staticmethod
     def _mean_circular(series) -> float:
-        """Calculates circular mean wrapped via 180."""
+        """Helper function which averages circular data which is wrapped via 180 (angle quantities)"""
         series = np.asarray(series.dropna(), dtype=float)
         if series.size == 0:
             return np.nan
@@ -65,7 +78,7 @@ class WindAnalyser:
 
     @staticmethod
     def _std_circular(series) -> float:
-        """Calculates circular standard deviation in degrees."""
+        """Helper function which determines the std of data which is wrapped via 180 (angle quantities)"""
         cleaned = np.asarray(series.dropna(), dtype=float)
         if cleaned.size == 0 or len(cleaned) == 1:
             return 0.0
@@ -88,8 +101,11 @@ class WindAnalyser:
 
     @classmethod
     def average_dataset(cls,dataset: pd.DataFrame,wrapped_angle_cols=None,groupby=None) -> pd.DataFrame:
-        """From each experiment repeat group converts it to one result mean with a standard deviation for error analysis:
+        """Function which averages the repeat instances of configurations and collapses them into a dataset with averaged results.
+        
+        From each experiment repeat group converts it to one result mean with a standard deviation for error analysis:
         e.g Repeat 1,2,3 collapsed into 1 datapoint into a mean and standard deviation as an additional column for each variable"""
+        # btw this function made me want to die
         if groupby:
             non_averaging_columns = groupby
         else:
@@ -121,6 +137,10 @@ class WindAnalyser:
     
     @classmethod
     def seperate_dataset_outliers(cls,mean_dataset,dataset,groups_to_check) -> tuple[pd.DataFrame, ...]:
+        """Function which utilises a raw dataset, the mean dataset and any groups to check for outliers to determine adataset of outliers.
+        These outliers are based on beyond 2 standard deviations above or below the mean of the repeat data.
+        
+        NOTE: Not certain of if this function truly works, to be tested."""
         global_outlier_mask = pd.Series(False, index=dataset.index)
         for col in groups_to_check:
             repeats = dataset['repeat'].max()
@@ -146,20 +166,23 @@ class WindAnalyser:
 
     @staticmethod
     def show_dataset_columns(dataset: pd.DataFrame) -> None:
+        """Function which returns all dataset columns available in a dataset."""
         print(", ".join(dataset.columns.astype(str)))
     
     @staticmethod
     def show_dataset_summary(dataset: pd.DataFrame) -> None:
+        """Function which returns a dataset summary."""
         dataset.info()
 
     @staticmethod
     def add_data_column(dataset: pd.DataFrame,column_name:str,column_data) -> pd.DataFrame:
+        """Function which inserts an additional column into a dataset."""
         dataset[column_name] = column_data
         return dataset
     
     @staticmethod
     def add_data_row(dataset: pd.DataFrame,row_data) -> pd.DataFrame:
-        """Adds row to existing dataframe, WARNING - row data must be in order of headers in dataframe or an error will occur"""
+        """Function which adds row to existing dataframe, WARNING - row data must be in order of headers in dataframe or an error will occur"""
         try:
             new_row = pd.DataFrame([row_data],columns=dataset.columns)
             return pd.concat([dataset,new_row],ignore_index=True)
@@ -167,7 +190,17 @@ class WindAnalyser:
             print(f"Error occured: {e}")
     
     @classmethod
-    def plot_tool(cls,dataframe: pd.DataFrame,raw_dataframe: pd.DataFrame,x_quantity, y_quantity,xlabel,ylabel, group_by=None, plot_raw_data=False,error_bars = False,save=True,ax=None):
+    def plot_tool(cls,dataframe: pd.DataFrame,raw_dataframe: pd.DataFrame,x_quantity:str , y_quantity:str,xlabel:str,ylabel:str, group_by=None, plot_raw_data=False,error_bars = False,save=True,ax=None) -> plt.ax:
+        """Plotting tool Function:
+        Requires mean dataset and raw dataset as an input.
+        x_quantity: str -> Column name from dataframe to act as x axis plot.
+        y_quantity: str -> Column name from dataframe to act as y axis plot.
+        group_by: str -> Column name by which properties should be grouped on the same line, FOR EXAMPLE: groupby 'probe_id' will group data plotted by which probe it was measured from.
+                so if you were to plot mean_velocity vs mean_pwm and grouped by probe - you would have a line for each probe on this plot.
+        ax: plt.ax object -> To plot more lines onto an existing axis object under matplotlib.pyplot.
+        
+        Other function inputs are self explanatory, error bars plot the standard deviation for errors."""
+
         if ax is None:
             fig, ax = plt.subplots(figsize=(11, 4))
             additional_label = ""
@@ -235,6 +268,7 @@ class WindAnalyser:
 
     @classmethod
     def save_plot(cls,file_name):
+        """Function which saves the current active plt.figure instance to the current experiment directory automatically in WINDANALYSIS."""
         cls._check_experiment_set()
         dir = cls._locate_working_directory()
         output = dir / f"{file_name}.png"
@@ -242,7 +276,7 @@ class WindAnalyser:
 
     @classmethod
     def save_analysis_dataset(cls,dataset, file_name):
-        """Converts user created pandas datasets to excel files in the experiment analysis directory"""
+        """Converts user created pandas datasets to excel files in the current experiment directory automatically in WINDANALYSIS"""
         cls._check_experiment_set()
         dir = cls._locate_working_directory()
         output = dir / f"{file_name}.xlsx"
@@ -250,6 +284,8 @@ class WindAnalyser:
 
     @classmethod
     def save_analysis_dataset_matlab(cls, dataset, file_name):
+        """Converts user created pandas datasets to MATLAB files in the current experiment directory automatically in WINDANALYSIS
+        NOTE: Not tested on actual functionality for further analysis in MATLAB - because I dont use it :)"""
         cls._check_experiment_set()
         dir = cls._locate_working_directory()
         output = dir / f"{file_name}.mat"

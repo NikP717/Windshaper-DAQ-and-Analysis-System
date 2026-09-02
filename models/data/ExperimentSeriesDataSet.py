@@ -2,16 +2,20 @@ import pandas as pd
 from pathlib import Path
 import shutil
 import pickle
+from typing import Self
+
 from models.data.DataColumns import DataColumns
 from models.data.WindDataset import WindDataset
 
-from typing import Self
-
 class ExperimentSeriesDataSet:
+    """Class which stores WindDataset instances as row-data lines in a larger dataset. Each row is a Winddataset output, this class enables large
+    dataset analysis later on."""
     def __init__(self, name: str) -> None:
+        """Initialises data columns, saving directory and referenced meta data."""
         project_dir = Path(__file__).resolve().parent.parent.parent
         reference_meta_file = next((project_dir / "WINDDATA").glob("*.pkl"))
         meta_data_cols = WindDataset.load(reference_meta_file).meta_data.columns.tolist() # takes a WINDDATA file metadata, important for all winddata files to have identical metadata
+
         self.columns = (
             [f"{c}_list" for c in DataColumns.PROBE_COLUMNS]
             + meta_data_cols
@@ -20,7 +24,7 @@ class ExperimentSeriesDataSet:
             + [f"{c}_z" for c in DataColumns.SUMMARY_COLUMNS]
             + [f"{c}_3d" for c in DataColumns.SUMMARY_COLUMNS]
             )
-        self.list_columns = [f"{c}_list" for c in DataColumns.PROBE_COLUMNS]
+        self.list_columns = [f"{c}_list" for c in DataColumns.PROBE_COLUMNS] # list columns store time series and velocity series data as a list.
         
         self.data_set = None
         self.name = name
@@ -28,6 +32,7 @@ class ExperimentSeriesDataSet:
         self._rows = []
 
     def _add_experiment(self,data: WindDataset) -> None:
+        """Function which adds a WindDataset as a row onto the parent class dataset."""
         listed_vars = []
         # list variables, e.g velocity over time instead of just average as defined above in columns
         keys = data.probe_data.columns
@@ -38,6 +43,7 @@ class ExperimentSeriesDataSet:
         self._rows.append(listed_vars)
 
     def input_winddata(self) -> None:
+        """Function which adds Winddatasets to the parent class dataset and records the file process and saves an excel instance of winddata for user reference."""
         project_dir = Path(__file__).resolve().parent.parent.parent
         data_dir = project_dir / "WINDDATA"
 
@@ -50,14 +56,22 @@ class ExperimentSeriesDataSet:
                   self.processed_files.append(path)
 
     def save(self, save_to_excel: bool = True, remove_raw_data: bool = False) -> None:
-        # WINDANALYSIS
-        # > EXPERIMENT NAME (FOLDER)
-        # > > EXCEL SHEET OF OVERALL DATA SET
-        # > > PICKLED OBJECT CLASS IF BEING LOADED LATER
-        # > > RAWDATA (FOLDER)
-        # > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT IN EXCEL FORM UNLESS EXCEL SAVING IS DISABLED
-        """Only use for newly created experimental data, forcefully moves Winddata used into this new instance.
-        If this directory already exists, it moves the currently stored experimental data into winddata to create an updated directory with additional data"""
+        """Function which saves the ExperimentSeriesDataSet instance as a pkl file storing the dataset and processed files in WINDANALYSIS,
+        it also moves all processed files into a RAWDATA file for reference too.
+        
+        NOTE: If a similar ExperimentSeriesDataset with an identical name has previously been saved, this function merges the two datasets together.
+        This feature prevents dataloss due to data overwriting, and allows users to save additional winddata seamlessly to existing datasets.
+
+        NOTE: Moves ALL data within WINDDATA > This data set instance. If any meta data is mismatched, pandas will exhibit unexpected behaviour.
+        
+        The data path of everything saved is presented below:
+        # .WINDANALYSIS
+        #   > EXPERIMENT NAME (FOLDER)
+        #       > > EXCEL SHEET OF OVERALL DATA SET (IF USER ENABLED EXCEL)
+        #       > > PICKLED OBJECT CLASS IF BEING LOADED LATER
+        #       > > RAWDATA (FOLDER)
+        #            > > > ALL EXPERIMENTAL DATA USED FOR EACH EXPERIMENT IN EXCEL FORM UNLESS EXCEL SAVING IS DISABLED
+        """
 
         project_dir = Path(__file__).resolve().parent.parent.parent
         output_dir = project_dir / "WINDANALYSIS" / self.name # experiment folder in wind analysis
@@ -86,6 +100,7 @@ class ExperimentSeriesDataSet:
             self._save_to_xl(output_dir)
 
     def _merge_datasets(self, path: Path):
+        """Helper function which merges datasets under saving if an identical dataset is detected."""
         other_dataset = self.load(path) # initiate classmethod to produce another instance of self
         other_rows = other_dataset.data_set.values.tolist()
         self._rows.extend(other_rows)
@@ -100,7 +115,7 @@ class ExperimentSeriesDataSet:
     def _save_to_xl(self, output_dir: Path) -> None:
         """"
         Creates an excel representation for data, does not include listed variables due to excel parsing large quantities of text.
-        Load from excel makes listed variables hard to use, recommend using load function instead""" 
+        Load from excel makes listed variables hard to use, recommend using load pkl function instead""" 
         file_name = f"{self.name}.xlsx" # excel sheet identical name as folder its within
         output = output_dir / file_name
         df_no_lists = self.data_set.drop(columns=self.list_columns)
@@ -110,13 +125,15 @@ class ExperimentSeriesDataSet:
 
     @classmethod
     def load(cls,path: Path) -> Self:
-        """Loads complete dataset object"""
+        """Class method which loads an ExperimentSeriesDataSet object from a pkl instance."""
         with open(path, "rb") as file:
             loaded_object = pickle.load(file)
             return loaded_object
     @classmethod
     def load_from_xl(cls,path: Path) -> Self:
-        """[!] Creates data set object which does not include listed variables e.g time elpased, velocity elapsed etc."""
+        """Class method which creates ExperimentSeriesDataSet object - 
+        [!] NOTE: Does not include listed variables e.g time elpased, velocity elapsed etc. 
+        - due to native excel storage limitations not allowing these to be inserted in the first place (cell character limit)."""
         filename = Path(path).stem
         new_data_obj = cls(name=filename)
         excel_data = pd.read_excel(path, sheet_name=None)

@@ -1,6 +1,7 @@
 import time
 
 class ExperimentClock():
+    """Class which acts as a centralised clock for all devices, controllers and time-based features within this repository."""
     def __init__(self) -> None:
         self.start_time = 0
         self.timer_start_time = 0

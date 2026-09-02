@@ -4,6 +4,23 @@ from models.wind.WindState import ArrayState
 from math import sin, pi
 import numpy as np
 
+"""
+The purpose of this script is to allow ConfigureExperiment to refer to these pre-made profiles within configuration, see more in ConfigureExperiment.py.
+
+Key Profile Information
+=============================
+- A WindProfile contains ProfileSteps which contain any amount of FanCommands.
+- ProfileCommands carry a FanSelection and a FanInstruction.
+
+- ProfileSteps are initiated here by profile.at_time(time, FanCommand*) -> Can apply multiple fan commands at one time.
+- FanSelection acts as a filter, the more specifiers you use e.g layer, fan_row, parity, etc. the less fans are selected.
+- Windfunctions must have an x_pos, y_pos, and time field as a requirement of WindSuiteSDK (see sine_flow below for an example) and return an intensity.
+
+- Closed loop and open loop commands cannot be mixed in one profile.
+
+For further details on ProfileSteps, FanCommands, FanInstructions, FanSelections, spectrum selection etc. see models.wind.WindProfileBuilder
+"""
+
 ALL_FANS = FanSelection()
 UPSTREAM_FANS = FanSelection(layer="upstream")
 DOWNSTREAM_FANS = FanSelection(layer="downstream")
@@ -16,17 +33,19 @@ def uniform_flow(pwm, duration):
     profile.at_time(0, 
                     FanCommand(selection=ALL_FANS,
                                instruction=FanInstruction(control_mode=ControlMode.PWM,pwm=pwm)
-                               )
+                               ),
                     )
     return profile.build(name)
 
 def sine_flow(average,frequency,amplitude,duration):
     name = "sine_flow"
+
     def sine_function(x_pos: float, y_pos: float, time: float):
         intensity = 0 + average + amplitude * sin(2*pi*time*frequency) 
         return intensity
     
     profile = WindProfileBuilder(duration)
+
     profile.at_time(0,
                     FanCommand(selection=ALL_FANS,
                                instruction=FanInstruction(control_mode=ControlMode.PWM,pwm_wind_function=sine_function)
@@ -183,6 +202,38 @@ def velocity_control_uniform_flow(velocity, duration, TI = None,  spectral_frequ
                                                           velocity_component=Vel.Z, 
                                                           TI = TI,
                                                           target_spectral_content=spectral_frequency_peaks)
+                                )
+                    )
+    return profile.build(name)
+
+def velocity_control_stress_test():
+    name="v_control_debug_test"
+    profile = WindProfileBuilder(120)
+    profile.at_time(0, 
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.VELOCITY,
+                                                          velocity=7,
+                                                          velocity_component=Vel.Z, 
+                                                          TI = None,
+                                                          target_spectral_content=None)
+                                )
+                    )
+    profile.at_time(15, 
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.VELOCITY,
+                                                          velocity=10,
+                                                          velocity_component=Vel.Z, 
+                                                          TI = None,
+                                                          target_spectral_content=None)
+                                )
+                    )
+    profile.at_time(30, 
+                    FanCommand(selection=ALL_FANS,
+                               instruction=FanInstruction(control_mode=ControlMode.VELOCITY,
+                                                          velocity=5,
+                                                          velocity_component=Vel.Z, 
+                                                          TI = None,
+                                                          target_spectral_content=None)
                                 )
                     )
     return profile.build(name)

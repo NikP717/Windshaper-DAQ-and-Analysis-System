@@ -1,19 +1,20 @@
+import threading
+import numpy as np
+
 from models.data.ControlFeedbackState import ControlFeedbackState
 from models.experiment.ExperimentClock import ExperimentClock
 from models.experiment.ExperimentConfig import ExperimentConfig
-from models.wind.WindProfileBuilder import FanInstruction
+from models.wind.WindProfileBuilder import FanInstruction, FanCommand
 from models.controllers.VelocityControl import VelocityControl
 from models.controllers.TurbulenceControl import TurbulenceControl
 from models.controllers.TurbulenceSpectralControl import TurbulenceSpectralControl
 from models.controllers.ControlWindFunction import ControlWindFunction
 from models.controllers.ControlWindFunction import LiveSineWindFunction
 
-import threading
-import numpy as np
-
-
 class ClosedLoopControlManager():
+    """Class which controls the updates of velocity, turbulence and spectral controllers and uses the outputs to adjust the control windfunction."""
     def __init__(self, clock: ExperimentClock, config: ExperimentConfig) -> None:
+        """Initialises controllers, and output wind function."""
         self.clock = clock
         self.config = config
         self.stop_status = threading.Event()
@@ -23,6 +24,8 @@ class ClosedLoopControlManager():
         self.velocity_controller = VelocityControl()
         self.turbulence_controller = None
         self.spectral_controller = None
+
+        self._generate_sines_for_feedback()
 
         if turbulence_status:
             self.turbulence_controller = TurbulenceControl(self.config)
@@ -37,12 +40,11 @@ class ClosedLoopControlManager():
 
         self.TURBULENCE_START_TIME = 20
 
-        self._generate_sines_for_feedback()
-
     def stop(self):
         self.stop_status.set()
 
     def change_instr(self, new_command: FanInstruction) -> None:
+        """Function which changes the target which all controllers tend towards, and refresh PID controllers to remove windup parameters."""
         ControlFeedbackState.target_velocity = new_command.velocity
         ControlFeedbackState.velocity_component = new_command.velocity_component
 
@@ -62,7 +64,8 @@ class ClosedLoopControlManager():
         if self.spectral_controller:
             self.spectral_controller.refresh_controller()
 
-    def update(self) -> int:
+    def update(self) -> None | FanCommand:
+        """Function which updates all of the controllers and initialises the wind function."""
         if self.stop_status.is_set():
             return
 
@@ -79,7 +82,8 @@ class ClosedLoopControlManager():
             self.control_init = True
             return fan_command
 
-    def _generate_sines_for_feedback(self):
+    def _generate_sines_for_feedback(self) ->  None:
+        """Helper function which inserts the frequency specified sines into ControlFeedbackState"""
         frequencies = np.arange(0.05, 0.65, 0.05)
         rng = np.random.default_rng(42) # repeatable phase randomiser for individual frequency sines
-        ControlFeedbackState.set_sines([LiveSineWindFunction(frequency=frequency, rng = rng) for frequency in frequencies])
+        ControlFeedbackState.set_sines([LiveSineWindFunction(frequency=np.round(frequency, 2), rng = rng) for frequency in frequencies])

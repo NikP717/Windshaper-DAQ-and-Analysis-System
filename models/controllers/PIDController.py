@@ -1,10 +1,11 @@
-from typing import Optional
-from dataclasses import dataclass
 import math
 import numpy as np
 
 class PIDController():
+    """Class which containns all the required logic of a standard PID Control 
+    with anti-wind up, derivate filtering, saturation handling, error handling and dynamic dt handling."""
     def __init__(self, kp, ki, kd, lim=(-20,20)) -> None:
+        """Initialises gains and resets any prior measurements and sets limits."""
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -24,6 +25,7 @@ class PIDController():
         self.reset()
 
     def reset(self) -> None:
+        """Function which refreshers all measurements and integral accumulation term."""
 
         self.integral = 0.0
 
@@ -33,6 +35,7 @@ class PIDController():
         self.filtered_derivative = 0.0
 
     def update(self, target: float, measurement: float, dt: float) -> float:
+        """Function which creates a step change in the PID response across a change of time dt."""
         if dt <= 0:
             return 0
         if math.isnan(measurement):

@@ -6,11 +6,20 @@ import numpy as np
 from rich.live import Live
 from rich.table import Table
 from rich.panel import Panel
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 class WindTracker():
+    """Class which controls Windsuite SDK Camera tracking callback technology and output coordinates whilst
+    enabling user live zeroing for experimental positioning.
+    
+    NOTE: In this current version this is not really applicable nor functional - coordinates are not accurate and involve cross-coupled movement of axis.
+    For anyone with a more developed tracking camera system maybe it does work - I havent confirmed if its a camera issue or code issue."""
+
     def __init__(self,active_windshaper_instance, active_probe_instance) -> None:
+        """Initialises all coordinate positions including quaternions, and stores active windshaper and probe instances for callback."""
         self.zero_position = None
         self.zero_rot = None
         self.zero_rot_inv = None
@@ -36,12 +45,14 @@ class WindTracker():
         self.is_tracking = False
         self.tracking_fail_notification = False
 
+        # TODO: UPDATE THIS FRAMEWORK TO WORK FOR NEW ID SYSTEM BECAUSE IM PRETTY SURE I CHANGED IT AND THIS WILL THROW AN ERROR.
         if active_probe_instance.ID == 1: # Old probe hard coded ID
             self.track_obj_name = "windprobold_e"
         else:
             self.track_obj_name = "" # TEMP UNTIL NEW PROBE
 
-    def telemetry_table(self):
+    def telemetry_table(self) -> None:
+        """Function which creates a live telemetry table for the user to see."""
         table = Table(title="Wind Probe Tracking Telemetry", expand=True)
         table.add_column("Parameter", justify="left")
         table.add_column("Value", justify="right")
@@ -89,22 +100,26 @@ class WindTracker():
         return Panel(table)
 
     def display_tracking(self):
+        """Function which displays live telemetry table at 10 FPS."""
         with Live(self.telemetry_table(),refresh_per_second=10) as live:
             while not self.stop_event.is_set():
                 live.update(self.telemetry_table())
                 time.sleep(0.1)
 
     def start(self) -> None:
+        """Function which starts windshaper tracking callback and display of tracking."""
         self.windshaper.windshaper.register_tracking_callback(callback=self._on_tracking_data)
         try:
-            print("[WINDTRACKER] Starting Tracking, press CTRL+C to end, press SPACE to zero coordinate system.")
+            logger.info("Starting Tracking, press CTRL+C to end, press SPACE to zero coordinate system.")
             self.display_tracking()
                 
         except KeyboardInterrupt:
             self.stop_event.set()
-            print("[WINDTRACKER] Ended tracking.")
+            logger.info("Ended tracking.")
 
     def _on_tracking_data(self, data: dict[str, TrackingData]):
+        """Function which acts as WindSuite SDK callback for tracking data.
+        NOTE: Quaternion and relative coordinate calculations were coded with support of AI."""
         for object_name, tracking_data in data.items():
 
             # Match object name

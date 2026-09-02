@@ -14,11 +14,11 @@ class BaseCalibration(ABC):
 
     # REQUIRED METHODS
     @abstractmethod
-    def __init__(self, config: ExperimentConfig):
+    def __init__(self, config: ExperimentConfig) -> None:
         """All calibrators must have a configuration implementation"""
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self) -> None:
         """All calibrators must have a run initialisation, this must run the calibration and calculate the gains/intercepts, and store them in the required properties above."""
         pass

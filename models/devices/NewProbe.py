@@ -1,11 +1,19 @@
 import threading
+import logging
+
 from windsuite_sdk import WindProbeData
 from models.wind.WindController import WindController
 from models.experiment.ExperimentClock import ExperimentClock
 from models.data.ProbeFeedbackState import ProbeFeedbackState
 
+logger = logging.getLogger(__name__)
+
 class NewProbe():
-    def __init__(self,windcontroller_instance: WindController, ID, clock: ExperimentClock, feedback_state: bool = False) -> None:
+    """Class which acts as a wrapper for the python feedback for the WindShape Series A Probe.
+    NOTE: This class is currently untested with the actual Series A Probe - to be tested and modified"""
+
+    def __init__(self, windcontroller_instance: WindController, ID, clock: ExperimentClock, feedback_state: bool = False) -> None:
+        """Initialises threading events, data buffer locking, plotting instance, and stores the windcontroller.windwrapper instance for PWM/RPM Feedback"""
         self.current_buffer_data = []
         self.probe_ready = threading.Event()
         self.probe_error = threading.Event()
@@ -19,12 +27,13 @@ class NewProbe():
         self.feedback_state = feedback_state
 
     def _zero_probe(self) -> bool: 
+        """Class which uses inbuilt windsuite SDK zeroing."""
         zero_success = self.windshaper.zero_windprobe()
         if zero_success:
-            print("[NEWWINDPROBE] Zeroed Successfully and connected.")
+            logging.info("Zeroed Successfully and connected.")
             return True
         else:
-            print("[NEWWINDPROBE] [ERROR] Zeroing failed, check connection.")
+            logging.error("Zeroing failed, check connection.")
             return False
 
     def start(self) -> None:
@@ -38,11 +47,15 @@ class NewProbe():
             self.plotter.close()
 
     def _on_new_probe_data(self, raw_probe_data: WindProbeData) -> None:
+        """Standard Windsuite SDK Probe data Callback. Also handles buffer locking of DeviceDataManager, live plotting feedback, 
+        closed loop control feedback."""
         if self.stop_event.is_set():
             return
+        
         vel = raw_probe_data.wind_velocity_mps_probe_ref
         time_elapsed = self.clock.time_elapsed
         windshape_parameters = self.windshaper.array_state
+        
         row =  [
                 time_elapsed,
                 vel.x,
@@ -54,18 +67,18 @@ class NewProbe():
                 *windshape_parameters.array_probe_snapshot_upstream,
                 *windshape_parameters.array_probe_snapshot_downstream
             ]
-            
+
+        # ensures plotting is updated at a lower frequency to reduce memory load on multiprocess and maintain 200Hz aquiscition.
+        # honestly not sure if needed but just safer than sorry
         self.plot_fq_limiter += 1
         if self.plotter and self.plot_fq_limiter % 4 == 0:
             self.plotter.push(row)
             self.plot_fq_limiter = 0
 
         if self.feedback_state:
-            feedback = ProbeFeedbackState()
             ProbeFeedbackState.windspeed_x = vel.x
             ProbeFeedbackState.windspeed_y = vel.y
             ProbeFeedbackState.windspeed_z = vel.z
-            feedback.change_time(self.clock)
         
         with self.buffer_lock:
             self.current_buffer_data.append(row)

@@ -7,7 +7,11 @@ from pyqtgraph.Qt import QtWidgets, QtCore
 
 
 class LivePlotter:
+    """Class which plots live inputted telemetry for wind and probe data spefifically. Operates on a multiprocess which resides within each Probe instance.
+    NOTE: Due to my lack of understanding of Qt Widgets - This code was heavily guided with AI support."""
+
     def __init__(self, probe_instance_ID: str, probe_plot=False, wind_plot=False, fan_shape = None | tuple,  max_points=100000) -> None:
+        """Initialises multiprocess of GUI generation and starts the multiprocess."""
 
         self.max_points = max_points
         self.q = mp.Queue(maxsize=10000)
@@ -26,19 +30,20 @@ class LivePlotter:
         self.proc.start()
 
     def push(self, row: list) -> None:
-        """Non-blocking."""
+        """Function which pushes data rows from probe instances to data queues."""
         try:
             self.q.put_nowait(row)
         except:
             pass
 
     def close(self) -> None:
+        """Function which closes multiprocess and gui of live plotting."""
         if self.proc.is_alive():
             self.shutdown.set() 
             self.proc.join(timeout=2)
 
     def _gui_process(self, q, max_points, shutdown_status) -> None:
-
+        """Helper function which manages updates of plot and also plot graphics."""
         app = QtWidgets.QApplication([])
 
         # ================= WindProbe =================
@@ -146,6 +151,8 @@ class LivePlotter:
         timer = QtCore.QTimer()
 
         def update() -> None:
+            """Sub function which uses the most recent row and slices it for appropriate data deques of each variable for plotting.
+            Function also dynamically updates legend text to display current values of the plot."""
             if self.wind_plot:
                 nonlocal downstream_rpm, upstream_rpm
 

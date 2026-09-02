@@ -10,35 +10,35 @@ import time
 Configuration Arguments:
     # Experiment naming parameters [REQUIRED] (will only include repeat in meta data if using manual dict)
     ====================================================================
-        distance_from_wall: Optional[float] = 0
-        probe_position: Optional[tuple] #(X,Y) = (0,0) -> not associated with tracking just to do with choice
+        distance_from_wall: Optional[float] = 0 -> reference for calibration and default metadata field
+        probe_position: Optional[tuple] #(X,Y) = (0,0) -> reference for calibration and default metadata field (can be anything you desire)
         repeat: int # marks repeat iteration e.g 1 will be labelled as R1, prevents ovewriting repeats of same configuration
 
     # Profile Management [REQUIRED]
     ====================================================================
-        wall: int # [1,2,3] -> Configure between 1 wall, 2nd wall (slave) or 3 (both) - if you modified WindSuite this integer list will be different (in order of list on windsuite)
-        profile: str # Check models.WindController for profile functions and required arguments
-        profile_arguments: list # Check models.WindController for profile functions and required arguments
+        wall: int [1,2,3..] -> configure between an enumerated wall list based on the layout selection available within WindSuite.
+        profile: Profile.callable(args*) -> Input the user specified profile from Profiles.py for the configuration to use.
 
     # Equipment Management [REQUIRED]
     ====================================================================
-        device_dict: dict # e.g {OldProbe: probe_1, OldProbe: probe_2, NewProbe: probe_3}, formatting follows: {device_type: custom_id} for unlimited .models probe devices added to this script.
+        device_dict: dict # e.g {'probe_customid_1': OldProbe, 'probe_customid_2': NewProbe, ...}, formatting follows: {custom_id: ProbeType} for unlimited .models probe devices added to this script.
+        controller_feedback_probe_list: list[probe_id, ...] its a list but the code doesnt actually support multiple at the minute, must be an ID within device_dict
     
-    
-    # Closed Loop Control
-    ====================================================================
-    If using a VELOCITY based Profile, a controller_feedback_probe ID is required. This registers a probe to send feedback data for a closed loop controller.
-
-    # Optional experiment modifiers
+    # Optional experiment modifiers [OPTIONAL]
     ====================================================================
     pause_time: Optional[float] = None -> pause between experiments
     probe_tracking: Optional[bool] = False -> enable probe tracking prior to measurement to position probe appropriately, requires USB connection to tracking camera and **WindVision server connection**
 
-    # Data modification Setting
+    # Data modification Setting [OPTIONAL]
     ====================================================================
     time_crop: Optional[tuple] = None #(start_time,end_time) - for cutting off spool up and down of windshaper
 
-    # Manual MetaData
+    # Live Data Display
+    ====================================================================
+    live_probe_data: Optional[bool] = False -> If user sets to true, one live plotter instance for each probe is displayed of current measurement.
+    live_windshaper_data: Optional[bool] = False -> If user sets to true, two live plotter instances for RPM feedback and average/std data is displayed for windshaper.
+
+    # Manual MetaData [OPTIONAL]
     ====================================================================
     [!] Will still always automatically include the repeat marked and probe ID to prevent unintentional duplicates.
     manual_meta_data = Optional[dict] = None   : e.g {'frequency': 10, 'dist': 5}
